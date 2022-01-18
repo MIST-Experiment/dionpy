@@ -1,6 +1,6 @@
 numpy<1.22.0
 scipy>=1.7.3
-iri2016>=1.11.1
+iri2016<=1.11.1
 matplotlib<=3.5.0
 pymap3d>=2.7.2
 h5py>=3.6.0

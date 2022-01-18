@@ -19,6 +19,11 @@ class OrderError(Exception):
     """
     pass
 
+def check_latlon(lat, lon):
+    if not -90 <= lat <= 90:
+        raise ValueError("Latitude of the instrument must be in range [-90, 90]")
+    if not -180 <= lon < 180:
+        raise ValueError("Longitude of the instrument must be in range [-180, 180]")
 
 def srange(theta, alt, RE=6378000.):
     """
@@ -179,13 +184,13 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
     delta_phi = 0.  # total change in angle
 
     # Distance from telescope to first layer
-    r_slant = srange((90. - el) * np.pi / 180., f_heights[0])
+    r_slant = srange((90. - el) * np.pi / 180., f_heights[0] - alt)
     # Geodetic coordinates of 'hit point' on the first layer
-    lat_cur, lon_cur, h_cur = pm.aer2geodetic(az, el, r_slant, lat, lon, alt)
+    lat_ray, lon_ray, h_ray = pm.aer2geodetic(az, el, r_slant, lat, lon, alt)
 
     # The sides of the 1st triangle
     d_tel = R_E + alt  # Distance from Earth center to telescope
-    d_cur = R_E + h_cur  # Distance from Earth center to layer
+    d_cur = R_E + h_ray  # Distance from Earth center to layer
 
     # The inclination angle at the 1st interface using law of cosines [rad]
     cosphi_inc = (r_slant ** 2 + d_cur ** 2 - d_tel ** 2) / (2 * r_slant * d_cur)
@@ -197,7 +202,7 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
 
     # Get IRI info of point
     # f_alt_prof = ion.IRI(dt, [h_cur / 1e3, h_cur / 1e3, 1], lat, lon)
-    f_alt_prof = ion.IRI(dt, [h_cur / 1e3, h_cur / 1e3, 1], lat, lon)
+    f_alt_prof = ion.IRI(dt, [h_ray / 1e3, h_ray / 1e3, 1], lat, lon)
     f_e_density[0] = f_alt_prof.ne.data[0]
 
     # Refraction index of 1st point
@@ -207,10 +212,12 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
     # The outgoing angle at the 1st interface using Snell's law
     phi_ref = refr_angle(n_cur, n_next, phi_inc)
     phis[0] = phi_ref
+
+    # #TODO: check if correct
     delta_phi += (phi_ref - phi_inc)
 
-    # Caution!
-    el_cur = el - (phi_ref - phi_inc)
+    # el_cur = el - (phi_ref - phi_inc)
+    el_cur = np.rad2deg(np.pi / 2 - phi_ref)
 
     n_cur = n_next
 
@@ -224,12 +231,13 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
         phi_inc = np.arcsin(np.sin(int_angle) * d_cur / d_next)
 
         # Getting r2 using law of cosines
-        r_slant = d_cur * np.cos(int_angle) + np.sqrt(d_next ** 2 - d_cur ** 2 * np.sin(int_angle) ** 2)
+        # r_slant = d_cur * np.cos(int_angle) + np.sqrt(d_next ** 2 - d_cur ** 2 * np.sin(int_angle) ** 2)
+        r_slant = srange((90. - el_cur) * np.pi / 180., d_next - d_cur)
         # Get geodetic coordinates of point
-        lat_cur, lon_cur, h_cur = pm.aer2geodetic(az, el_cur, r_slant, lat_cur, lon_cur, h_cur)
+        lat_ray, lon_ray, h_ray = pm.aer2geodetic(az, el_cur, r_slant, lat_ray, lon_ray, h_ray)
 
         # Get IRI info of 2nd point
-        f_alt_prof = ion.IRI(dt, [h_cur / 1000, h_cur / 1000, 1], lat_cur, lon_cur)
+        f_alt_prof = ion.IRI(dt, [h_ray / 1000, h_ray / 1000, 1], lat_ray, lon_ray)
         f_e_density[i] = f_alt_prof.ne.data[0]
         if f_e_density[i] < 0:
             raise ValueError("Something went wrong. Number density cannot be < 0.")
@@ -248,7 +256,8 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
         delta_phi += (phi_ref - phi_inc)
 
         # Update variables for new interface
-        el_cur = el_cur - (phi_ref - phi_inc)
+        # el_cur = el_cur - (phi_ref - phi_inc)
+        el_cur = np.rad2deg(np.pi / 2 - phi_ref)
         n_cur = n_next
         d_cur = d_next
 
@@ -301,10 +310,7 @@ class IonModel:
     """
 
     def __init__(self, lat0, lon0, alt0, freq, dt):
-        if not -90 <= lat0 <= 90:
-            raise ValueError("Latitude of the instrument must be in range [-90, 90]")
-        if not -180 <= lon0 < 180:
-            raise ValueError("Longitude of the instrument must be in range [-180, 180]")
+        check_latlon(lat0, lon0)
 
         self.lat0 = lat0
         self.lon0 = lon0
@@ -478,6 +484,8 @@ class IonModel:
                 self.delta_phi = np.vstack([f[2] for f in flayer]).reshape([-1])
                 self.ns = np.vstack([f[3] for f in flayer])
 
+        return
+
     def _calc_d_attenuation(self):
         """
         Calculates the attenuation factor from frequency of the signal [Hz], angle [rad],
@@ -548,11 +556,14 @@ class IonModel:
         if not os.path.exists(dir):
             os.makedirs(dir)
         if name is None:
-            name = dir + f"{self.dt.year}_{self.dt.month}_{self.dt.day}_{self.dt.hour}_{self.dt.minute}"
+            name = os.path.join(dir, f"{self.dt.year}_{self.dt.month}_{self.dt.day}_{self.dt.hour}_{self.dt.minute}")
         else:
-            name = dir + name
+            name = os.path.join(dir, name)
 
-        with h5py.File(name + ".h5", mode='w') as file:
+        if not name.endswith('.h5'):
+            name += '.h5'
+
+        with h5py.File(name, mode='w') as file:
             meta = file.create_dataset('meta', shape=(0,))
             meta.attrs['lat0'] = self.lat0
             meta.attrs['lon0'] = self.lon0
@@ -595,6 +606,8 @@ class IonModel:
 
     @classmethod
     def load(cls, filename: str):
+        if not filename.endswith('.h5'):
+            filename += '.h5'
         with h5py.File(filename, mode='r') as file:
             meta = file.get('meta')
             obj = cls(
@@ -612,8 +625,8 @@ class IonModel:
             try:
                 obj.setup_dlayer(
                     nlayers=meta.attrs['ndlayers'],
-                    d_bot=meta.attrs['dbot'],
-                    d_top=meta.attrs['dtop'],
+                    d_bot=meta.attrs['d_bot'],
+                    d_top=meta.attrs['d_top'],
                 )
             except KeyError:
                 pass
@@ -621,8 +634,8 @@ class IonModel:
             try:
                 obj.setup_flayer(
                     nlayers=meta.attrs['nflayers'],
-                    f_bot=meta.attrs['fbot'],
-                    f_top=meta.attrs['ftop'],
+                    f_bot=meta.attrs['f_bot'],
+                    f_top=meta.attrs['f_top'],
                 )
             except KeyError:
                 pass
@@ -639,8 +652,23 @@ class IonModel:
 
         return obj
 
-    def plot(self, data='d_e_density', title=None, label=None, cblim=None, file=None, dpi=300, cmap='viridis'):
-        avail = ['d_e_density', 'f_e_density']
+    def plot_dedensity(self, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
+        data = self.d_e_density.mean(axis=1)
+        if title is None:
+            title = r'Average $e^-$ density in D layer'
+        if label is None:
+            label = r"$m^{-3}$"
+        return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def plot_fedensity(self, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
+        data = self.f_e_density.mean(axis=1)
+        if title is None:
+            title = r'Average $e^-$ density in F layer'
+        if label is None:
+            label = r"$m^{-3}$"
+        return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
         gridsize = int(np.sqrt(self.npoints))
         if gridsize ** 2 != self.npoints:
             warnings.warn(
@@ -653,27 +681,12 @@ class IonModel:
         az_rad = self.az * np.pi / 180.
         zenith = 90. - self.el
 
-        if data == 'd_e_density':
-            data_ = self.d_e_density.mean(axis=1)
-            if title is None:
-                title = r'Average $e^-$ density in D layer'
-            if label is None:
-                label = r"$m^{-3}$"
-        elif data == 'f_e_density':
-            data_ = self.f_e_density.mean(axis=1)
-            if title is None:
-                title = r'Average $e^-$ density in F layer'
-            if label is None:
-                label = r"$m^{-3}$"
-        else:
-            raise ValueError(f"Cannot draw the plot for {data} data type. Available options: ", ', '.join(avail))
-
         zen_rows = np.split(zenith, gridsize)
         az_rows = np.split(az_rad, gridsize)
-        data_rows = np.split(data_, gridsize)
+        data_rows = np.split(data, gridsize)
 
         if cblim is None:
-            cblim = (np.min(data_), np.max(data_))
+            cblim = (np.min(data), np.max(data))
 
         fig = plt.figure()
 
@@ -685,8 +698,13 @@ class IonModel:
         plt.colorbar(img).set_label(r'' + label)
         plt.title(title)
         plt.xlabel(datetime.strftime(self.dt, '%Y-%m-%d %H:%M'))
+
         if file is not None:
-            plt.savefig(file, dpi=dpi)
+            if dir == None:
+                dir = 'pictures/'
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            plt.savefig(os.path.join(dir, file), dpi=dpi)
             plt.close(fig)
             return
-        plt.show()
+        return fig
