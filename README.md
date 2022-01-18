@@ -16,47 +16,71 @@ Then you can install the package via pip
 python3 -m pip install git+https://github.com/lap1dem/mist_ion.git
 ```
 
-It will install all necessary dependencies. However, if you want to run
-parallel calculations on systems with distributed memory (e. g. clusters),
-you will need an MPI implementation like [Open MPI](https://www.open-mpi.org/) 
-or [MPICH](https://www.mpich.org/).
+[//]: # (## Quick example)
 
-## Quick example
-```python
-from mist_ion import IonModel
-from datetime import datetime
+[//]: # (```python)
 
-# Date and time of observation
-dt = datetime.strptime('2012-08-15 06:00', '%Y-%m-%d %H:%M')
+[//]: # (from mist_ion import IonModel)
 
-# Initial model parameters: telescope position, frequency of observations, datetime
-model = IonModel(
-    lat0=79.433,
-    lon0=-90.766,
-    alt0=0.,
-    freq=45e6,
-    dt=dt
-)
+[//]: # (from datetime import datetime)
 
-# Create a grid of [gridsize x gridsize] points - azimuth and elevation (telescope POV)
-model.generate_coord_grid(gridsize=100)
+[//]: # ()
+[//]: # (# Date and time of observation)
 
-# Setup D layer and F layer parameters (number of sublayers, lower and upper limits in m)
-model.setup_dlayer(nlayers=10, d_bot = 6e4, d_top = 9e4)
-model.setup_flayer(nlayers=30)
+[//]: # (dt = datetime.strptime&#40;'2012-08-15 06:00', '%Y-%m-%d %H:%M'&#41;)
 
-# Starting calculation with 16 parallel processes
-model.calc(progressbar=True, processes=16)
+[//]: # ()
+[//]: # (# Initial model parameters: telescope position, frequency of observations, datetime)
 
-# Saving results for later use
-model.save(name='test', dir='results')
+[//]: # (model = IonModel&#40;)
 
-# Loading model
-new_model = IonModel.load('results/test.h5')
+[//]: # (    lat0=79.433,)
 
-# Plotting results
-model.plot(data='d_e_density')
+[//]: # (    lon0=-90.766,)
 
-# Plotting and saving results
-model.plot(data='d_e_density', file='d_e_density_plot.png')
-```
+[//]: # (    alt0=0.,)
+
+[//]: # (    freq=45e6,)
+
+[//]: # (    dt=dt)
+
+[//]: # (&#41;)
+
+[//]: # ()
+[//]: # (# Create a grid of [gridsize x gridsize] points - azimuth and elevation &#40;telescope POV&#41;)
+
+[//]: # (model.generate_coord_grid&#40;gridsize=100&#41;)
+
+[//]: # ()
+[//]: # (# Setup D layer and F layer parameters &#40;number of sublayers, lower and upper limits in m&#41;)
+
+[//]: # (model.setup_dlayer&#40;nlayers=10, d_bot = 6e4, d_top = 9e4&#41;)
+
+[//]: # (model.setup_flayer&#40;nlayers=30&#41;)
+
+[//]: # ()
+[//]: # (# Starting calculation with 16 parallel processes)
+
+[//]: # (model.calc&#40;progressbar=True, processes=16&#41;)
+
+[//]: # ()
+[//]: # (# Saving results for later use)
+
+[//]: # (model.save&#40;name='test', dir='results'&#41;)
+
+[//]: # ()
+[//]: # (# Loading model)
+
+[//]: # (new_model = IonModel.load&#40;'results/test.h5'&#41;)
+
+[//]: # ()
+[//]: # (# Plotting results)
+
+[//]: # (model.plot&#40;data='d_e_density'&#41;)
+
+[//]: # ()
+[//]: # (# Plotting and saving results)
+
+[//]: # (model.plot&#40;data='d_e_density', file='d_e_density_plot.png'&#41;)
+
+[//]: # (```)
