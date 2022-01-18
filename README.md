@@ -5,7 +5,13 @@ for the [MIST](http://www.physics.mcgill.ca/mist/) project. A more detailed over
 available soon.
 
 ## Installing
-You can install the package via pip
+Prerequisites
+- MPI implementation, for example
+  - [Open MPI](https://www.open-mpi.org/) 
+  - [MPICH](https://www.mpich.org/)
+  - [Microsoft MPI](https://docs.microsoft.com/en-us/message-passing-interface/microsoft-mpi) (for Windows)
+
+Then you can install the package via pip
 ```
 python3 -m pip install git+https://github.com/lap1dem/mist_ion.git
 ```
