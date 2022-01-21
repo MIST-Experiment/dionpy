@@ -1,6 +1,7 @@
 from .IonModel import IonModel, OrderError, _d_temp_density, _calc_flayer
 from tqdm import tqdm
 import numpy as np
+import warnings
 from mpi4py import MPI
 from mpi4py.futures import MPIPoolExecutor, as_completed
 COMM = MPI.COMM_WORLD
@@ -24,6 +25,12 @@ class IonModelMPI(IonModel):
             raise OrderError("You have to set up parameters for the F layer first (use the setup_flayer() method)")
 
         if MPI_SIZE <= 1:
+            warnings.warn(
+                "Can't split data into equal number of rows. "
+                "Please make sure your coordinates represent a square grid.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
             if layer != 'f' and layer != 'F':
                 dlayer = []
 
