@@ -2,8 +2,8 @@ from .IonModel import IonModel, OrderError, _d_temp_density, _calc_flayer
 from tqdm import tqdm
 import numpy as np
 import warnings
-import mpi4py.rc
-mpi4py.rc.threads = False
+# import mpi4py.rc
+# mpi4py.rc.threads = False
 from mpi4py import MPI
 from mpi4py.futures import MPIPoolExecutor, as_completed
 COMM = MPI.COMM_WORLD
