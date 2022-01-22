@@ -28,8 +28,7 @@ class IonModelMPI(IonModel):
 
         if MPI_SIZE <= 1:
             warnings.warn(
-                "Can't split data into equal number of rows. "
-                "Please make sure your coordinates represent a square grid.",
+                "Creating a single MPI process. Something probably went wrong.",
                 RuntimeWarning,
                 stacklevel=2,
             )

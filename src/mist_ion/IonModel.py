@@ -1,3 +1,7 @@
+import os
+import tempfile
+os.environ["MPLCONFIGDIR"] = tempfile.gettempdir()
+
 import itertools as it
 import warnings
 from multiprocessing import Pool, cpu_count
