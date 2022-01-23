@@ -6,15 +6,13 @@ import itertools as it
 import warnings
 from multiprocessing import Pool, cpu_count
 
-import h5py
-import iri2016 as ion
-import matplotlib.pyplot as plt
 import numpy as np
+import iri2016 as ion
 import pymap3d as pm
 from tqdm import tqdm
-import os
 
 from datetime import datetime, timedelta
+
 
 
 class OrderError(Exception):
@@ -23,11 +21,13 @@ class OrderError(Exception):
     """
     pass
 
+
 def check_latlon(lat, lon):
     if not -90 <= lat <= 90:
         raise ValueError("Latitude of the instrument must be in range [-90, 90]")
     if not -180 <= lon < 180:
         raise ValueError("Longitude of the instrument must be in range [-180, 180]")
+
 
 def srange(theta, alt, RE=6378000.):
     """
@@ -555,6 +555,7 @@ class IonModel:
         """
         # TODO
         """
+        import h5py
         if dir == None:
             dir = 'calc_results/'
         if not os.path.exists(dir):
@@ -610,6 +611,7 @@ class IonModel:
 
     @classmethod
     def load(cls, filename: str):
+        import h5py
         if not filename.endswith('.h5'):
             filename += '.h5'
         with h5py.File(filename, mode='r') as file:
@@ -673,6 +675,7 @@ class IonModel:
         return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
 
     def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
+        import matplotlib.pyplot as plt
         gridsize = int(np.sqrt(self.npoints))
         if gridsize ** 2 != self.npoints:
             warnings.warn(
