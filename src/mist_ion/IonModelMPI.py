@@ -12,7 +12,7 @@ MPI_SIZE = COMM.Get_size()
 
 
 class IonModelMPI(IonModel):
-    def calc(self, progressbar=False, layer=None, **kwargs):
+    def calc(self, progressbar=False, layer=None, max_workers=None, **kwargs):
         """
         Calculates all necessary values for ionosphere impact modeling - D-layer [electron density(d_e_density),
         electron temperature(d_e_temp), attenuation factor(d_attenuation), average temperature(d_avg_temp)] and F-layer
@@ -51,6 +51,7 @@ class IonModelMPI(IonModel):
                 self.d_e_temp = np.vstack([d[1] for d in dlayer])
                 self._calc_d_attenuation()
                 self._calc_d_avg_temp()
+                self._interpolate_d_layer()
 
             if layer != 'd' and layer != 'D':
                 flayer = []
@@ -72,10 +73,11 @@ class IonModelMPI(IonModel):
                 self.phis = np.vstack([f[1] for f in flayer])
                 self.delta_phi = np.vstack([f[2] for f in flayer]).reshape([-1])
                 self.ns = np.vstack([f[3] for f in flayer])
+                self._interpolate_f_layer()
 
         else:
             if layer != 'f' and layer != 'F':
-                with MPIPoolExecutor(main=False) as pool:
+                with MPIPoolExecutor(main=False, max_workers=max_workers) as pool:
                     futures = [pool.submit(
                         _d_temp_density,
                         self.dt,
@@ -97,6 +99,7 @@ class IonModelMPI(IonModel):
                 self.d_e_temp = np.vstack([f.result()[1] for f in futures])
                 self._calc_d_attenuation()
                 self._calc_d_avg_temp()
+                self._interpolate_d_layer()
 
             if layer != 'd' and layer != 'D':
                 with MPIPoolExecutor(main=False) as pool:
@@ -122,5 +125,6 @@ class IonModelMPI(IonModel):
                 self.phis = np.vstack([f.result()[1] for f in futures])
                 self.delta_phi = np.vstack([f.result()[2] for f in futures]).reshape([-1])
                 self.ns = np.vstack([f.result()[3] for f in futures])
+                self._interpolate_f_layer()
 
 

@@ -1,5 +1,6 @@
 import os
 import tempfile
+
 os.environ["MPLCONFIGDIR"] = tempfile.gettempdir()
 
 import itertools as it
@@ -12,7 +13,6 @@ import pymap3d as pm
 from tqdm import tqdm
 
 from datetime import datetime, timedelta
-
 
 
 class OrderError(Exception):
@@ -323,6 +323,7 @@ class IonModel:
         self.dt = dt
 
         self.npoints = None
+        self.gridsize = None
         self.el = None
         self.az = None
 
@@ -346,11 +347,17 @@ class IonModel:
         self.delta_phi = None
         self.ns = None
 
-    def set_coords(self, el, az):
+        self.interp_d_layers = None
+        self.interp_d_aver = None
+        self.interp_f_layers = None
+        self.interp_f_aver = None
+
+    def set_coords(self, el, az, gridsize=None):
         if len(el) != len(az):
             raise ValueError("Elevation and azimuth must be the same length.")
         self.el = el
         self.az = az
+        self.gridsize = gridsize
         self.npoints = len(el)
 
     def generate_coord_grid(self, el_start=0., el_end=90., az_start=0., az_end=360., gridsize=100):
@@ -371,12 +378,12 @@ class IonModel:
             Resolution of the coordinate grid. The total number of points will be [gridsize x gridsize].
         """
 
-        az_values = np.linspace(az_start, az_end, gridsize, endpoint=True)
+        az_vals = np.linspace(az_start, az_end, gridsize, endpoint=True)
         el_vals = np.linspace(el_start, el_end, gridsize)
 
-        self.az = np.repeat(az_values, gridsize)
+        self.az = np.repeat(az_vals, gridsize)
         self.el = np.tile(el_vals, gridsize)
-
+        self.gridsize = gridsize
         self.npoints = gridsize * gridsize
 
     def setup_dlayer(self, nlayers=10, d_bot=6e4, d_top=9e4, col_freq='default'):
@@ -415,6 +422,30 @@ class IonModel:
         self.nflayers = nlayers
         self.f_bot = f_bot
         self.f_top = f_top
+
+    def _interpolate_d_layer(self):
+        from scipy.interpolate import interp2d
+        az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
+        el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
+        lmodels = [
+            interp2d(el_vals, az_vals, self.d_e_density[:, i].reshape(self.gridsize, self.gridsize), kind='linear')
+            for i in range(self.ndlayers)
+        ]
+        self.interp_d_layers = lmodels
+        aver_data = self.d_e_density.mean(axis=1)
+        self.interp_d_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind='linear')
+
+    def _interpolate_f_layer(self):
+        from scipy.interpolate import interp2d
+        az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
+        el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
+        lmodels = [
+            interp2d(el_vals, az_vals, self.f_e_density[:, i].reshape(self.gridsize, self.gridsize), kind='linear')
+            for i in range(self.nflayers)
+        ]
+        self.interp_f_layers = lmodels
+        aver_data = self.f_e_density.mean(axis=1)
+        self.interp_f_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind='linear')
 
     def calc(self, processes=1, progressbar=False, layer=None):
         """
@@ -462,6 +493,7 @@ class IonModel:
                 self.d_e_temp = np.vstack([d[1] for d in dlayer])
             self._calc_d_attenuation()
             self._calc_d_avg_temp()
+            self._interpolate_d_layer()
 
         if layer != 'd' and layer != 'D':
             with Pool(processes=processes) as pool:
@@ -487,6 +519,7 @@ class IonModel:
                 self.phis = np.vstack([f[1] for f in flayer])
                 self.delta_phi = np.vstack([f[2] for f in flayer]).reshape([-1])
                 self.ns = np.vstack([f[3] for f in flayer])
+            self._interpolate_f_layer()
 
         return
 
@@ -589,6 +622,11 @@ class IonModel:
                 pass
 
             try:
+                meta.attrs['gridsize'] = self.gridsize
+            except TypeError:
+                pass
+
+            try:
                 meta.attrs['npoints'] = self.npoints
                 file.create_dataset('el', data=self.el)
                 file.create_dataset('az', data=self.az)
@@ -623,12 +661,16 @@ class IonModel:
                 freq=meta.attrs['freq'],
                 dt=datetime.strptime(meta.attrs['dt'], '%Y-%m-%d %H:%M'),
             )
-
-            obj.set_coords(
-                el=np.array(file.get('el')),
-                az=np.array(file.get('az')),
-            )
             try:
+                gridsize = meta.attrs['gridsize']
+            except KeyError:
+                gridsize = None
+            try:
+                obj.set_coords(
+                    el=np.array(file.get('el')),
+                    az=np.array(file.get('az')),
+                    gridsize=gridsize,
+                )
                 obj.setup_dlayer(
                     nlayers=meta.attrs['ndlayers'],
                     d_bot=meta.attrs['d_bot'],
@@ -651,31 +693,89 @@ class IonModel:
             obj.d_attenuation = np.array(file.get('d_attenuation'))
             obj.d_avg_temp = np.array(file.get('d_avg_temp'))
 
+            if obj.d_e_density is not None:
+                obj._interpolate_d_layer()
+
             obj.f_e_density = np.array(file.get('f_e_density'))
             obj.phis = np.array(file.get('phis'))
             obj.delta_phi = np.array(file.get('delta_phi'))
             obj.ns = np.array(file.get('ns'))
 
+            if obj.f_e_density is not None:
+                obj._interpolate_f_layer()
+
         return obj
 
-    def plot_dedensity(self, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
-        data = self.d_e_density.mean(axis=1)
+    def plot_dedensity(self, layer=None, interpolated=True, title=None, label=None, cblim=None, file=None, dir=None,
+                       dpi=300, cmap='viridis'):
         if title is None:
             title = r'Average $e^-$ density in D layer'
         if label is None:
             label = r"$m^{-3}$"
-        return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
 
-    def plot_fedensity(self, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
+        if interpolated:
+            grsz = 1000
+            az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
+            el = np.linspace(np.min(self.el), np.max(self.el), grsz)
+            if layer is None:
+                dd = self.interp_d_aver(el, az)
+            elif int(layer) < self.ndlayers:
+                dd = self.interp_d_layers[int(layer)](el, az)
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
+            az_rad = az * np.pi / 180.
+            zenith = 90. - el
+            z, a = np.meshgrid(zenith, az_rad)
+            return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
+        else:
+            if layer is None:
+                data = self.d_e_density.mean(axis=1)
+            elif int(layer) < self.ndlayers:
+                data = self.d_e_density[:, layer]
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
+
+            return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def plot_fedensity(self, interpolated=True, layer=None, title=None, label=None, cblim=None, file=None, dir=None,
+                       dpi=300, cmap='viridis'):
         data = self.f_e_density.mean(axis=1)
         if title is None:
             title = r'Average $e^-$ density in F layer'
         if label is None:
             label = r"$m^{-3}$"
-        return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+        if interpolated:
+            grsz = 1000
+            az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
+            el = np.linspace(np.min(self.el), np.max(self.el), grsz)
+            if layer is None:
+                dd = self.interp_f_aver(el, az)
+            elif int(layer) < self.nflayers:
+                dd = self.interp_f_layers[int(layer)](el, az)
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
+            az_rad = az * np.pi / 180.
+            zenith = 90. - el
+            z, a = np.meshgrid(zenith, az_rad)
+            return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
+        else:
+            if layer is None:
+                data = self.f_e_density.mean(axis=1)
+            elif int(layer) < self.ndlayers:
+                data = self.f_e_density[:, layer]
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
+
+            return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
 
     def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
         import matplotlib.pyplot as plt
+        fig = plt.figure(figsize=(8, 8))
+
+        ax = fig.add_subplot(111, projection='polar')
+
         gridsize = int(np.sqrt(self.npoints))
         if gridsize ** 2 != self.npoints:
             warnings.warn(
@@ -685,20 +785,21 @@ class IonModel:
                 stacklevel=2,
             )
 
-        az_rad = self.az * np.pi / 180.
-        zenith = 90. - self.el
+        if not isinstance(data, list):
+            if cblim is None:
+                cblim = (np.min(data), np.max(data))
+            az_rad = self.az * np.pi / 180.
+            zenith = 90. - self.el
 
-        zen_rows = np.split(zenith, gridsize)
-        az_rows = np.split(az_rad, gridsize)
-        data_rows = np.split(data, gridsize)
+            zen_rows = np.split(zenith, gridsize)
+            az_rows = np.split(az_rad, gridsize)
+            data_rows = np.split(data, gridsize)
 
-        if cblim is None:
-            cblim = (np.min(data), np.max(data))
-
-        fig = plt.figure()
-
-        ax = fig.add_subplot(111, projection='polar')
-        img = ax.pcolormesh(az_rows, zen_rows, data_rows, cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
+            img = ax.pcolormesh(az_rows, zen_rows, data_rows, cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
+        else:
+            if cblim is None:
+                cblim = (np.min(data[2]), np.max(data[2]))
+            img = ax.pcolormesh(data[0], data[1], data[2], cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
         ax.set_rticks([90, 60, 30, 0])
         ax.scatter(0, 0, c='red', s=5)
         ax.set_theta_zero_location("S")
