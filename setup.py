@@ -8,7 +8,7 @@ with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
 setuptools.setup(
-    name="mist_ion",
+    name="mistion",
     version="0.4.5",
     author="lap1dem",
     author_email="vadym.bidula@gmail.com",
