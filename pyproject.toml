@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mistion"
-version = "0.3.2"
+version = "0.3.3"
 description = "Ionosphere simulation for the MIST project"
 authors = ["lap1dem <vadym.bidula@gmail.com>"]
 license = "MIT"
