@@ -106,6 +106,7 @@ class FProfile:
         """
         # TODO
         """
+        import h5py
         if dir == None:
             dir = 'fprofile_results/'
         if not os.path.exists(dir):
@@ -134,6 +135,7 @@ class FProfile:
 
     @classmethod
     def load(cls, filename: str):
+        import h5py
         if not filename.endswith('.h5'):
             filename += '.h5'
         with h5py.File(filename, mode='r') as file:
