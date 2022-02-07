@@ -1,6 +1,5 @@
 import warnings
 from .IonModel import IonModel, srange, n_f, refr_angle, check_latlon
-# from .FProfile import FProfile
 
 try:
     from .IonModelMPI import IonModelMPI
