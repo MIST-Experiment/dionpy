@@ -13,7 +13,7 @@ Prerequisites
 
 Then you can install the package via pip
 ```
-python3 -m pip install git+https://github.com/lap1dem/mist_ion.git
+python3 -m pip install mistion
 ```
 
 [//]: # (## Quick example)
