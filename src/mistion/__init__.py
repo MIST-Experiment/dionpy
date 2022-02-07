@@ -1,6 +1,8 @@
 import warnings
 from .IonModel import IonModel, srange, n_f, refr_angle, check_latlon
 
+from scripts.build_iri import build_iri
+
 try:
     from .IonModelMPI import IonModelMPI
 except ImportError:

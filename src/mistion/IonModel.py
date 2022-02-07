@@ -584,235 +584,235 @@ class IonModel:
 
         self.d_avg_temp = d_avg_temp
 
-    # def save(self, name=None, dir=None):
-    #     """
-    #     # TODO
-    #     """
-    #     import h5py
-    #     if dir == None:
-    #         dir = 'calc_results/'
-    #     if not os.path.exists(dir):
-    #         os.makedirs(dir)
-    #     if name is None:
-    #         name = os.path.join(dir, f"{self.dt.year}_{self.dt.month}_{self.dt.day}_{self.dt.hour}_{self.dt.minute}")
-    #     else:
-    #         name = os.path.join(dir, name)
-    #
-    #     if not name.endswith('.h5'):
-    #         name += '.h5'
-    #
-    #     with h5py.File(name, mode='w') as file:
-    #         meta = file.create_dataset('meta', shape=(0,))
-    #         meta.attrs['lat0'] = self.lat0
-    #         meta.attrs['lon0'] = self.lon0
-    #         meta.attrs['alt0'] = self.alt0
-    #         meta.attrs['freq'] = self.freq
-    #         meta.attrs['dt'] = self.dt.strftime('%Y-%m-%d %H:%M')
-    #         try:
-    #             meta.attrs['ndlayers'] = self.ndlayers
-    #             meta.attrs['d_top'] = self.d_top
-    #             meta.attrs['d_bot'] = self.d_bot
-    #         except TypeError:
-    #             pass
-    #         try:
-    #             meta.attrs['nflayers'] = self.nflayers
-    #             meta.attrs['f_top'] = self.f_top
-    #             meta.attrs['f_bot'] = self.f_bot
-    #         except TypeError:
-    #             pass
-    #
-    #         try:
-    #             meta.attrs['gridsize'] = self.gridsize
-    #         except TypeError:
-    #             pass
-    #
-    #         try:
-    #             meta.attrs['npoints'] = self.npoints
-    #             file.create_dataset('el', data=self.el)
-    #             file.create_dataset('az', data=self.az)
-    #         except TypeError:
-    #             pass
-    #         try:
-    #             file.create_dataset('d_e_density', data=self.d_e_density)
-    #             file.create_dataset('d_e_temp', data=self.d_e_temp)
-    #             file.create_dataset('d_attenuation', data=self.d_attenuation)
-    #             file.create_dataset('d_avg_temp', data=self.d_avg_temp)
-    #         except TypeError:
-    #             pass
-    #         try:
-    #             file.create_dataset('f_e_density', data=self.f_e_density)
-    #             file.create_dataset('phis', data=self.phis)
-    #             file.create_dataset('delta_phi', data=self.delta_phi)
-    #             file.create_dataset('ns', data=self.ns)
-    #         except TypeError:
-    #             pass
+    def save(self, name=None, dir=None):
+        """
+        # TODO
+        """
+        import h5py
+        if dir == None:
+            dir = 'calc_results/'
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        if name is None:
+            name = os.path.join(dir, f"{self.dt.year}_{self.dt.month}_{self.dt.day}_{self.dt.hour}_{self.dt.minute}")
+        else:
+            name = os.path.join(dir, name)
 
-    # @classmethod
-    # def load(cls, filename: str):
-    #     import h5py
-    #     if not filename.endswith('.h5'):
-    #         filename += '.h5'
-    #     with h5py.File(filename, mode='r') as file:
-    #         meta = file.get('meta')
-    #         obj = cls(
-    #             lat0=meta.attrs['lat0'],
-    #             lon0=meta.attrs['lon0'],
-    #             alt0=meta.attrs['alt0'],
-    #             freq=meta.attrs['freq'],
-    #             dt=datetime.strptime(meta.attrs['dt'], '%Y-%m-%d %H:%M'),
-    #         )
-    #         try:
-    #             gridsize = meta.attrs['gridsize']
-    #         except KeyError:
-    #             gridsize = None
-    #         try:
-    #             obj.set_coords(
-    #                 el=np.array(file.get('el')),
-    #                 az=np.array(file.get('az')),
-    #                 gridsize=gridsize,
-    #             )
-    #             obj.setup_dlayer(
-    #                 nlayers=meta.attrs['ndlayers'],
-    #                 d_bot=meta.attrs['d_bot'],
-    #                 d_top=meta.attrs['d_top'],
-    #             )
-    #         except KeyError:
-    #             pass
-    #
-    #         try:
-    #             obj.setup_flayer(
-    #                 nlayers=meta.attrs['nflayers'],
-    #                 f_bot=meta.attrs['f_bot'],
-    #                 f_top=meta.attrs['f_top'],
-    #             )
-    #         except KeyError:
-    #             pass
-    #
-    #         obj.d_e_density = np.array(file.get('d_e_density'))
-    #         obj.d_e_temp = np.array(file.get('d_e_temp'))
-    #         obj.d_attenuation = np.array(file.get('d_attenuation'))
-    #         obj.d_avg_temp = np.array(file.get('d_avg_temp'))
-    #
-    #         if obj.d_e_density is not None:
-    #             obj._interpolate_d_layer()
-    #
-    #         obj.f_e_density = np.array(file.get('f_e_density'))
-    #         obj.phis = np.array(file.get('phis'))
-    #         obj.delta_phi = np.array(file.get('delta_phi'))
-    #         obj.ns = np.array(file.get('ns'))
-    #
-    #         if obj.f_e_density is not None:
-    #             obj._interpolate_f_layer()
-    #
-    #     return obj
+        if not name.endswith('.h5'):
+            name += '.h5'
 
-    # def plot_dedensity(self, layer=None, interpolated=True, title=None, label=None, cblim=None, file=None, dir=None,
-    #                    dpi=300, cmap='viridis'):
-    #     if title is None:
-    #         title = r'Average $e^-$ density in D layer'
-    #     if label is None:
-    #         label = r"$m^{-3}$"
-    #
-    #     if interpolated:
-    #         grsz = 1000
-    #         az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
-    #         el = np.linspace(np.min(self.el), np.max(self.el), grsz)
-    #         if layer is None:
-    #             dd = self.interp_d_aver(el, az)
-    #         elif int(layer) < self.ndlayers:
-    #             dd = self.interp_d_layers[int(layer)](el, az)
-    #         else:
-    #             raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
-    #         az_rad = az * np.pi / 180.
-    #         zenith = 90. - el
-    #         z, a = np.meshgrid(zenith, az_rad)
-    #         return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
-    #                                 cmap=cmap)
-    #     else:
-    #         if layer is None:
-    #             data = self.d_e_density.mean(axis=1)
-    #         elif int(layer) < self.ndlayers:
-    #             data = self.d_e_density[:, layer]
-    #         else:
-    #             raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
-    #
-    #         return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
-    #
-    # def plot_fedensity(self, interpolated=True, layer=None, title=None, label=None, cblim=None, file=None, dir=None,
-    #                    dpi=300, cmap='viridis'):
-    #     data = self.f_e_density.mean(axis=1)
-    #     if title is None:
-    #         title = r'Average $e^-$ density in F layer'
-    #     if label is None:
-    #         label = r"$m^{-3}$"
-    #     if interpolated:
-    #         grsz = 1000
-    #         az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
-    #         el = np.linspace(np.min(self.el), np.max(self.el), grsz)
-    #         if layer is None:
-    #             dd = self.interp_f_aver(el, az)
-    #         elif int(layer) < self.nflayers:
-    #             dd = self.interp_f_layers[int(layer)](el, az)
-    #         else:
-    #             raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
-    #         az_rad = az * np.pi / 180.
-    #         zenith = 90. - el
-    #         z, a = np.meshgrid(zenith, az_rad)
-    #         return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
-    #                                 cmap=cmap)
-    #     else:
-    #         if layer is None:
-    #             data = self.f_e_density.mean(axis=1)
-    #         elif int(layer) < self.ndlayers:
-    #             data = self.f_e_density[:, layer]
-    #         else:
-    #             raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
-    #
-    #         return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
-    #
-    # def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
-    #     import matplotlib.pyplot as plt
-    #     fig = plt.figure(figsize=(8, 8))
-    #
-    #     ax = fig.add_subplot(111, projection='polar')
-    #
-    #     gridsize = int(np.sqrt(self.npoints))
-    #     if gridsize ** 2 != self.npoints:
-    #         warnings.warn(
-    #             "Can't split data into equal number of rows. "
-    #             "Please make sure your coordinates represent a square grid.",
-    #             RuntimeWarning,
-    #             stacklevel=2,
-    #         )
-    #
-    #     if not isinstance(data, list):
-    #         if cblim is None:
-    #             cblim = (np.min(data), np.max(data))
-    #         az_rad = self.az * np.pi / 180.
-    #         zenith = 90. - self.el
-    #
-    #         zen_rows = np.split(zenith, gridsize)
-    #         az_rows = np.split(az_rad, gridsize)
-    #         data_rows = np.split(data, gridsize)
-    #
-    #         img = ax.pcolormesh(az_rows, zen_rows, data_rows, cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
-    #     else:
-    #         if cblim is None:
-    #             cblim = (np.min(data[2]), np.max(data[2]))
-    #         img = ax.pcolormesh(data[0], data[1], data[2], cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
-    #     ax.set_rticks([90, 60, 30, 0])
-    #     ax.scatter(0, 0, c='red', s=5)
-    #     ax.set_theta_zero_location("S")
-    #     plt.colorbar(img).set_label(r'' + label)
-    #     plt.title(title)
-    #     plt.xlabel(datetime.strftime(self.dt, '%Y-%m-%d %H:%M'))
-    #
-    #     if file is not None:
-    #         if dir == None:
-    #             dir = 'pictures/'
-    #         if not os.path.exists(dir):
-    #             os.makedirs(dir)
-    #         plt.savefig(os.path.join(dir, file), dpi=dpi)
-    #         plt.close(fig)
-    #         return
-    #     return fig
+        with h5py.File(name, mode='w') as file:
+            meta = file.create_dataset('meta', shape=(0,))
+            meta.attrs['lat0'] = self.lat0
+            meta.attrs['lon0'] = self.lon0
+            meta.attrs['alt0'] = self.alt0
+            meta.attrs['freq'] = self.freq
+            meta.attrs['dt'] = self.dt.strftime('%Y-%m-%d %H:%M')
+            try:
+                meta.attrs['ndlayers'] = self.ndlayers
+                meta.attrs['d_top'] = self.d_top
+                meta.attrs['d_bot'] = self.d_bot
+            except TypeError:
+                pass
+            try:
+                meta.attrs['nflayers'] = self.nflayers
+                meta.attrs['f_top'] = self.f_top
+                meta.attrs['f_bot'] = self.f_bot
+            except TypeError:
+                pass
+
+            try:
+                meta.attrs['gridsize'] = self.gridsize
+            except TypeError:
+                pass
+
+            try:
+                meta.attrs['npoints'] = self.npoints
+                file.create_dataset('el', data=self.el)
+                file.create_dataset('az', data=self.az)
+            except TypeError:
+                pass
+            try:
+                file.create_dataset('d_e_density', data=self.d_e_density)
+                file.create_dataset('d_e_temp', data=self.d_e_temp)
+                file.create_dataset('d_attenuation', data=self.d_attenuation)
+                file.create_dataset('d_avg_temp', data=self.d_avg_temp)
+            except TypeError:
+                pass
+            try:
+                file.create_dataset('f_e_density', data=self.f_e_density)
+                file.create_dataset('phis', data=self.phis)
+                file.create_dataset('delta_phi', data=self.delta_phi)
+                file.create_dataset('ns', data=self.ns)
+            except TypeError:
+                pass
+
+    @classmethod
+    def load(cls, filename: str):
+        import h5py
+        if not filename.endswith('.h5'):
+            filename += '.h5'
+        with h5py.File(filename, mode='r') as file:
+            meta = file.get('meta')
+            obj = cls(
+                lat0=meta.attrs['lat0'],
+                lon0=meta.attrs['lon0'],
+                alt0=meta.attrs['alt0'],
+                freq=meta.attrs['freq'],
+                dt=datetime.strptime(meta.attrs['dt'], '%Y-%m-%d %H:%M'),
+            )
+            try:
+                gridsize = meta.attrs['gridsize']
+            except KeyError:
+                gridsize = None
+            try:
+                obj.set_coords(
+                    el=np.array(file.get('el')),
+                    az=np.array(file.get('az')),
+                    gridsize=gridsize,
+                )
+                obj.setup_dlayer(
+                    nlayers=meta.attrs['ndlayers'],
+                    d_bot=meta.attrs['d_bot'],
+                    d_top=meta.attrs['d_top'],
+                )
+            except KeyError:
+                pass
+
+            try:
+                obj.setup_flayer(
+                    nlayers=meta.attrs['nflayers'],
+                    f_bot=meta.attrs['f_bot'],
+                    f_top=meta.attrs['f_top'],
+                )
+            except KeyError:
+                pass
+
+            obj.d_e_density = np.array(file.get('d_e_density'))
+            obj.d_e_temp = np.array(file.get('d_e_temp'))
+            obj.d_attenuation = np.array(file.get('d_attenuation'))
+            obj.d_avg_temp = np.array(file.get('d_avg_temp'))
+
+            if obj.d_e_density is not None:
+                obj._interpolate_d_layer()
+
+            obj.f_e_density = np.array(file.get('f_e_density'))
+            obj.phis = np.array(file.get('phis'))
+            obj.delta_phi = np.array(file.get('delta_phi'))
+            obj.ns = np.array(file.get('ns'))
+
+            if obj.f_e_density is not None:
+                obj._interpolate_f_layer()
+
+        return obj
+
+    def plot_dedensity(self, layer=None, interpolated=True, title=None, label=None, cblim=None, file=None, dir=None,
+                       dpi=300, cmap='viridis'):
+        if title is None:
+            title = r'Average $e^-$ density in D layer'
+        if label is None:
+            label = r"$m^{-3}$"
+
+        if interpolated:
+            grsz = 1000
+            az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
+            el = np.linspace(np.min(self.el), np.max(self.el), grsz)
+            if layer is None:
+                dd = self.interp_d_aver(el, az)
+            elif int(layer) < self.ndlayers:
+                dd = self.interp_d_layers[int(layer)](el, az)
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
+            az_rad = az * np.pi / 180.
+            zenith = 90. - el
+            z, a = np.meshgrid(zenith, az_rad)
+            return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
+        else:
+            if layer is None:
+                data = self.d_e_density.mean(axis=1)
+            elif int(layer) < self.ndlayers:
+                data = self.d_e_density[:, layer]
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < ndlayers.")
+
+            return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def plot_fedensity(self, interpolated=True, layer=None, title=None, label=None, cblim=None, file=None, dir=None,
+                       dpi=300, cmap='viridis'):
+        data = self.f_e_density.mean(axis=1)
+        if title is None:
+            title = r'Average $e^-$ density in F layer'
+        if label is None:
+            label = r"$m^{-3}$"
+        if interpolated:
+            grsz = 1000
+            az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
+            el = np.linspace(np.min(self.el), np.max(self.el), grsz)
+            if layer is None:
+                dd = self.interp_f_aver(el, az)
+            elif int(layer) < self.nflayers:
+                dd = self.interp_f_layers[int(layer)](el, az)
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
+            az_rad = az * np.pi / 180.
+            zenith = 90. - el
+            z, a = np.meshgrid(zenith, az_rad)
+            return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
+        else:
+            if layer is None:
+                data = self.f_e_density.mean(axis=1)
+            elif int(layer) < self.ndlayers:
+                data = self.f_e_density[:, layer]
+            else:
+                raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
+
+            return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figsize=(8, 8))
+
+        ax = fig.add_subplot(111, projection='polar')
+
+        gridsize = int(np.sqrt(self.npoints))
+        if gridsize ** 2 != self.npoints:
+            warnings.warn(
+                "Can't split data into equal number of rows. "
+                "Please make sure your coordinates represent a square grid.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+        if not isinstance(data, list):
+            if cblim is None:
+                cblim = (np.min(data), np.max(data))
+            az_rad = self.az * np.pi / 180.
+            zenith = 90. - self.el
+
+            zen_rows = np.split(zenith, gridsize)
+            az_rows = np.split(az_rad, gridsize)
+            data_rows = np.split(data, gridsize)
+
+            img = ax.pcolormesh(az_rows, zen_rows, data_rows, cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
+        else:
+            if cblim is None:
+                cblim = (np.min(data[2]), np.max(data[2]))
+            img = ax.pcolormesh(data[0], data[1], data[2], cmap=cmap, vmin=cblim[0], vmax=cblim[1], shading='auto')
+        ax.set_rticks([90, 60, 30, 0])
+        ax.scatter(0, 0, c='red', s=5)
+        ax.set_theta_zero_location("S")
+        plt.colorbar(img).set_label(r'' + label)
+        plt.title(title)
+        plt.xlabel(datetime.strftime(self.dt, '%Y-%m-%d %H:%M'))
+
+        if file is not None:
+            if dir == None:
+                dir = 'pictures/'
+            if not os.path.exists(dir):
+                os.makedirs(dir)
+            plt.savefig(os.path.join(dir, file), dpi=dpi)
+            plt.close(fig)
+            return
+        return fig
