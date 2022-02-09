@@ -13,6 +13,7 @@ import pymap3d as pm
 from tqdm import tqdm
 
 from datetime import datetime, timedelta
+from time import time
 
 
 class OrderError(Exception):
@@ -178,7 +179,7 @@ def _d_temp_density_star(pars):
 
 def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
     """
-    # TODO Calculates
+    #TODO
     """
     R_E = 6371000.
     f_heights = np.linspace(f_bot, f_top, nflayers)
@@ -236,7 +237,8 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
 
         # Getting r2 using law of cosines
         # r_slant = d_cur * np.cos(int_angle) + np.sqrt(d_next ** 2 - d_cur ** 2 * np.sin(int_angle) ** 2)
-        r_slant = srange((90. - el_cur) * np.pi / 180., d_next - d_cur)
+        # r_slant = srange((90. - el_cur) * np.pi / 180., d_next - d_cur)
+        r_slant = srange((90. - el_cur) * np.pi / 180., d_next - d_cur, RE=R_E + d_cur)
         # Get geodetic coordinates of point
         lat_ray, lon_ray, h_ray = pm.aer2geodetic(az, el_cur, r_slant, lat_ray, lon_ray, h_ray)
 
@@ -471,6 +473,9 @@ class IonModel:
             )
 
         if layer != 'f' and layer != 'F':
+            if not progressbar:
+                print("Starting calulation for D layer for date " + str(self.dt))
+                t1_d = time()
             with Pool(processes=processes) as pool:
                 dlayer = list(tqdm(pool.imap(
                     _d_temp_density_star,
@@ -494,8 +499,13 @@ class IonModel:
             self._calc_d_attenuation()
             self._calc_d_avg_temp()
             self._interpolate_d_layer()
+            if not progressbar:
+                print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.")
 
         if layer != 'd' and layer != 'D':
+            if not progressbar:
+                print("Starting calulation for F layer for date " + str(self.dt))
+                t1_f = time()
             with Pool(processes=processes) as pool:
                 flayer = list(tqdm(pool.imap(
                     _calc_flayer_star,
@@ -520,6 +530,8 @@ class IonModel:
                 self.delta_phi = np.vstack([f[2] for f in flayer]).reshape([-1])
                 self.ns = np.vstack([f[3] for f in flayer])
             self._interpolate_f_layer()
+            if not progressbar:
+                print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.")
 
         return
 

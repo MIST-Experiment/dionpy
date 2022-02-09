@@ -2,8 +2,7 @@ from .IonModel import IonModel, OrderError, _d_temp_density, _calc_flayer
 from tqdm import tqdm
 import numpy as np
 import warnings
-# import mpi4py.rc
-# mpi4py.rc.threads = False
+from time import time
 from mpi4py import MPI
 from mpi4py.futures import MPIPoolExecutor, as_completed
 COMM = MPI.COMM_WORLD
@@ -77,6 +76,9 @@ class IonModelMPI(IonModel):
 
         else:
             if layer != 'f' and layer != 'F':
+                if not progressbar:
+                    print("Starting calulation for D layer for date " + str(self.dt))
+                    t1_d = time()
                 with MPIPoolExecutor(main=False, max_workers=max_workers) as pool:
                     futures = [pool.submit(
                         _d_temp_density,
@@ -100,8 +102,13 @@ class IonModelMPI(IonModel):
                 self._calc_d_attenuation()
                 self._calc_d_avg_temp()
                 self._interpolate_d_layer()
+                if not progressbar:
+                    print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.")
 
             if layer != 'd' and layer != 'D':
+                if not progressbar:
+                    print("Starting calulation for F layer for date " + str(self.dt))
+                    t1_f = time()
                 with MPIPoolExecutor(main=False) as pool:
                     futures = [pool.submit(
                         _calc_flayer,
@@ -126,5 +133,7 @@ class IonModelMPI(IonModel):
                 self.delta_phi = np.vstack([f.result()[2] for f in futures]).reshape([-1])
                 self.ns = np.vstack([f.result()[3] for f in futures])
                 self._interpolate_f_layer()
+                if not progressbar:
+                    print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.")
 
 
