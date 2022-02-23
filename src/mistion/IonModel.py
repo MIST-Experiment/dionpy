@@ -170,7 +170,8 @@ def _d_temp_density(dt, d_bot, d_top, ndlayers, el, az, lat, lon, alt):
 
         d_e_temp[i] = alt_prof.Te.data
 
-    return d_e_density, d_e_temp
+    # return d_e_density, d_e_temp
+    return d_e_density, d_e_temp, d_obs_lat, d_obs_lon
 
 
 def _d_temp_density_star(pars):
@@ -353,6 +354,7 @@ class IonModel:
         self.interp_d_aver = None
         self.interp_f_layers = None
         self.interp_f_aver = None
+        self.interp_delta_phi = None
 
     def set_coords(self, el, az, gridsize=None):
         if len(el) != len(az):
@@ -362,7 +364,7 @@ class IonModel:
         self.gridsize = gridsize
         self.npoints = len(el)
 
-    def generate_coord_grid(self, el_start=0., el_end=90., az_start=0., az_end=360., gridsize=100):
+    def generate_coord_grid(self, el_start=0., el_end=90., az_start=0., az_end=360., gridsize=32):
         """
         Generates a grid of coordinates at which all the parameters will be calculated.
 
@@ -425,29 +427,35 @@ class IonModel:
         self.f_bot = f_bot
         self.f_top = f_top
 
-    def _interpolate_d_layer(self):
+    def _interpolate_d_layer(self, kind='cubic'):
         from scipy.interpolate import interp2d
         az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
         el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
         lmodels = [
-            interp2d(el_vals, az_vals, self.d_e_density[:, i].reshape(self.gridsize, self.gridsize), kind='linear')
+            interp2d(el_vals, az_vals, self.d_e_density[:, i].reshape(self.gridsize, self.gridsize), kind=kind)
             for i in range(self.ndlayers)
         ]
         self.interp_d_layers = lmodels
         aver_data = self.d_e_density.mean(axis=1)
-        self.interp_d_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind='linear')
+        self.interp_d_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind=kind)
 
-    def _interpolate_f_layer(self):
+    def _interpolate_f_layer(self, kind='cubic'):
         from scipy.interpolate import interp2d
         az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
         el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
         lmodels = [
-            interp2d(el_vals, az_vals, self.f_e_density[:, i].reshape(self.gridsize, self.gridsize), kind='linear')
+            interp2d(el_vals, az_vals, self.f_e_density[:, i].reshape(self.gridsize, self.gridsize), kind=kind)
             for i in range(self.nflayers)
         ]
         self.interp_f_layers = lmodels
         aver_data = self.f_e_density.mean(axis=1)
-        self.interp_f_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind='linear')
+        self.interp_f_aver = interp2d(el_vals, az_vals, aver_data.reshape(self.gridsize, self.gridsize), kind=kind)
+
+    def _interpolate_delta_phi(self, kind='cubic'):
+        from scipy.interpolate import interp2d
+        az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
+        el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
+        self.interp_delta_phi = interp2d(el_vals, az_vals, self.delta_phi.reshape(self.gridsize, self.gridsize), kind=kind)
 
     def calc(self, processes=1, progressbar=False, layer=None):
         """
@@ -474,7 +482,7 @@ class IonModel:
 
         if layer != 'f' and layer != 'F':
             if not progressbar:
-                print("Starting calulation for D layer for date " + str(self.dt))
+                print("Starting calulation for D layer for date " + str(self.dt), flush=True)
                 t1_d = time()
             with Pool(processes=processes) as pool:
                 dlayer = list(tqdm(pool.imap(
@@ -496,15 +504,17 @@ class IonModel:
                 ))
                 self.d_e_density = np.vstack([d[0] for d in dlayer])
                 self.d_e_temp = np.vstack([d[1] for d in dlayer])
+                self.d_obs_lat = np.vstack([d[2] for d in dlayer])
+                self.d_obs_lon = np.vstack([d[3] for d in dlayer])
             self._calc_d_attenuation()
             self._calc_d_avg_temp()
             self._interpolate_d_layer()
             if not progressbar:
-                print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.")
+                print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.", flush=True)
 
         if layer != 'd' and layer != 'D':
             if not progressbar:
-                print("Starting calulation for F layer for date " + str(self.dt))
+                print("Starting calulation for F layer for date " + str(self.dt), flush=True)
                 t1_f = time()
             with Pool(processes=processes) as pool:
                 flayer = list(tqdm(pool.imap(
@@ -531,7 +541,7 @@ class IonModel:
                 self.ns = np.vstack([f[3] for f in flayer])
             self._interpolate_f_layer()
             if not progressbar:
-                print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.")
+                print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.", flush=True)
 
         return
 
@@ -715,6 +725,8 @@ class IonModel:
 
             if obj.f_e_density is not None:
                 obj._interpolate_f_layer()
+            if obj.delta_phi is not None:
+                obj._interpolate_delta_phi()
 
         return obj
 
@@ -752,7 +764,6 @@ class IonModel:
 
     def plot_fedensity(self, interpolated=True, layer=None, title=None, label=None, cblim=None, file=None, dir=None,
                        dpi=300, cmap='viridis'):
-        data = self.f_e_density.mean(axis=1)
         if title is None:
             title = r'Average $e^-$ density in F layer'
         if label is None:
@@ -781,6 +792,26 @@ class IonModel:
                 raise ValueError("Parameter 'layer' must either be None or int < nflayers.")
 
             return self._polar_plot(data, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+
+    def plot_delta_phi(self, interpolated=True, title=None, label=None, cblim=None, file=None, dir=None,
+                       dpi=300, cmap='viridis'):
+        if title is None:
+            title = r'$\delta \theta$ dependence on elevation and azimuth'
+        if label is None:
+            label = r"$\delta \theta$"
+
+        if interpolated:
+            grsz = 1000
+            az = np.linspace(np.min(self.az), np.max(self.az), grsz, endpoint=True)
+            el = np.linspace(np.min(self.el), np.max(self.el), grsz)
+            dd = self.interp_delta_phi(el, az)
+            az_rad = az * np.pi / 180.
+            zenith = 90. - el
+            z, a = np.meshgrid(zenith, az_rad)
+            return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
+        else:
+            return self._polar_plot(self.delta_phi, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
 
     def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
         import matplotlib.pyplot as plt

@@ -77,7 +77,7 @@ class IonModelMPI(IonModel):
         else:
             if layer != 'f' and layer != 'F':
                 if not progressbar:
-                    print("Starting calulation for D layer for date " + str(self.dt))
+                    print("Starting calulation for D layer for date " + str(self.dt), flush=True)
                     t1_d = time()
                 with MPIPoolExecutor(main=False, max_workers=max_workers) as pool:
                     futures = [pool.submit(
@@ -103,11 +103,11 @@ class IonModelMPI(IonModel):
                 self._calc_d_avg_temp()
                 self._interpolate_d_layer()
                 if not progressbar:
-                    print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.")
+                    print(f"Calulation for D layer have ended with {time() - t1_d:.1f} seconds.", flush=True)
 
             if layer != 'd' and layer != 'D':
                 if not progressbar:
-                    print("Starting calulation for F layer for date " + str(self.dt))
+                    print("Starting calulation for F layer for date " + str(self.dt), flush=True)
                     t1_f = time()
                 with MPIPoolExecutor(main=False) as pool:
                     futures = [pool.submit(
@@ -134,6 +134,6 @@ class IonModelMPI(IonModel):
                 self.ns = np.vstack([f.result()[3] for f in futures])
                 self._interpolate_f_layer()
                 if not progressbar:
-                    print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.")
+                    print(f"Calulation for F layer have ended with {time() - t1_f:.1f} seconds.", flush=True)
 
 
