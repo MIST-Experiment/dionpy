@@ -23,6 +23,12 @@ class OrderError(Exception):
     pass
 
 
+def _none_or_array(vals):
+    if vals is None:
+        return None
+    return np.array(vals)
+
+
 def check_latlon(lat, lon):
     if not -90 <= lat <= 90:
         raise ValueError("Latitude of the instrument must be in range [-90, 90]")
@@ -72,7 +78,7 @@ def col_setty(height):
 
 def nu_p(n_e):
     """
-    Plasma frequency from electron density
+    Plasma frequency of cold electrons
 
     Parameters
     ----------
@@ -87,9 +93,48 @@ def nu_p(n_e):
     e = 1.60217662e-19
     m_e = 9.10938356e-31
     epsilon0 = 8.85418782e-12
-    if n_e < 0:
-        raise ValueError('Number density cannot be < 0.')
+    if np.min(n_e) < 0:
+        raise ValueError(
+            "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date.")
     return 1 / (2 * np.pi) * np.sqrt((n_e * e ** 2) / (m_e * epsilon0))
+
+
+def nu_p_warm(n_e, T_e, freq):
+    """
+        Plasma frequency of warm electrons
+
+        Parameters
+        ----------
+        n_e : float
+            Electron density
+        T_e : float
+            Electron temperature
+        freq : float
+            Frequency of observation
+
+        Returns
+        -------
+        float
+            Plasma frequency in Hz
+        """
+    k_B = 1.38064852e-23
+    e = 1.60217662e-19
+    m_e = 9.10938356e-31
+    epsilon0 = 8.85418782e-12
+    c = 299792458
+
+    if np.min(n_e) < 0:
+        raise ValueError(
+            "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date.")
+    if np.min(T_e) < 0:
+        raise ValueError(
+            "Temperaturey cannot be < 0. Most probably iri2016 does not include data for the specified date.")
+
+    k = c / freq
+    om2_p = (n_e * e ** 2) / (m_e * epsilon0)
+    om2_t = 3 * k ** 2 * k_B * T_e / m_e
+    return 0.5 * np.sqrt(om2_p + om2_t) / np.pi
+
 
 
 def n_f(n_e, freq):
@@ -210,6 +255,9 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
     # f_alt_prof = ion.IRI(dt, [h_cur / 1e3, h_cur / 1e3, 1], lat, lon)
     f_alt_prof = ion.IRI(dt, [h_ray / 1e3, h_ray / 1e3, 1], lat, lon)
     f_e_density[0] = f_alt_prof.ne.data[0]
+    if f_e_density[0] < 0:
+        raise ValueError(
+            "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date.")
 
     # Refraction index of 1st point
     n_next = n_f(f_e_density[0], freq)
@@ -247,7 +295,8 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, el, az, lat, lon, alt, freq):
         f_alt_prof = ion.IRI(dt, [h_ray / 1000, h_ray / 1000, 1], lat_ray, lon_ray)
         f_e_density[i] = f_alt_prof.ne.data[0]
         if f_e_density[i] < 0:
-            raise ValueError("Something went wrong. Number density cannot be < 0.")
+            raise ValueError(
+                "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date.")
 
         # Refractive indices
         n_next = n_f(f_e_density[i], freq)
@@ -384,7 +433,7 @@ class IonModel:
 
         az_vals = np.linspace(az_start, az_end, gridsize, endpoint=True)
         el_vals = np.linspace(el_start, el_end, gridsize)
-
+        # Alternative to az, el = np.meshgrid(az, el), then flatten
         self.az = np.repeat(az_vals, gridsize)
         self.el = np.tile(el_vals, gridsize)
         self.gridsize = gridsize
@@ -455,7 +504,8 @@ class IonModel:
         from scipy.interpolate import interp2d
         az_vals = np.linspace(np.min(self.az), np.max(self.az), self.gridsize, endpoint=True)
         el_vals = np.linspace(np.min(self.el), np.max(self.el), self.gridsize)
-        self.interp_delta_phi = interp2d(el_vals, az_vals, self.delta_phi.reshape(self.gridsize, self.gridsize), kind=kind)
+        self.interp_delta_phi = interp2d(el_vals, az_vals, self.delta_phi.reshape(self.gridsize, self.gridsize),
+                                         kind=kind)
 
     def calc(self, processes=1, progressbar=False, layer=None):
         """
@@ -563,16 +613,18 @@ class IonModel:
                 col_model = col_setty
             else:
                 col_model = lambda h: (col_nicolet(h) + col_setty(h)) * 0.5
+            
+            heights = np.linspace(self.d_bot, self.d_top, self.ndlayers)
 
             for i in range(self.npoints):
-                nu_c = col_model(self.d_obs_h[i] / 1000)
                 d_attenuation_temp = np.empty(self.ndlayers)
-
+                
                 for j in range(self.ndlayers):
+                    nu_c = col_model(heights[j] / 1000)
                     plasma_freq = nu_p(self.d_e_density[i][j])
                     d_attenuation_temp[j] = d_atten(self.freq, (90 - self.el[i]) * np.pi / 180, h_d, delta_h_d,
                                                     plasma_freq,
-                                                    nu_c[j])
+                                                    nu_c)
 
                 d_attenuation[i] = np.average(d_attenuation_temp)
 
@@ -689,8 +741,8 @@ class IonModel:
                 gridsize = None
             try:
                 obj.set_coords(
-                    el=np.array(file.get('el')),
-                    az=np.array(file.get('az')),
+                    el=_none_or_array(file.get('el')),
+                    az=_none_or_array(file.get('az')),
                     gridsize=gridsize,
                 )
                 obj.setup_dlayer(
@@ -710,18 +762,18 @@ class IonModel:
             except KeyError:
                 pass
 
-            obj.d_e_density = np.array(file.get('d_e_density'))
-            obj.d_e_temp = np.array(file.get('d_e_temp'))
-            obj.d_attenuation = np.array(file.get('d_attenuation'))
-            obj.d_avg_temp = np.array(file.get('d_avg_temp'))
+            obj.d_e_density = _none_or_array(file.get('d_e_density'))
+            obj.d_e_temp = _none_or_array(file.get('d_e_temp'))
+            obj.d_attenuation = _none_or_array(file.get('d_attenuation'))
+            obj.d_avg_temp = _none_or_array(file.get('d_avg_temp'))
 
             if obj.d_e_density is not None:
                 obj._interpolate_d_layer()
 
-            obj.f_e_density = np.array(file.get('f_e_density'))
-            obj.phis = np.array(file.get('phis'))
-            obj.delta_phi = np.array(file.get('delta_phi'))
-            obj.ns = np.array(file.get('ns'))
+            obj.f_e_density = _none_or_array(file.get('f_e_density'))
+            obj.phis = _none_or_array(file.get('phis'))
+            obj.delta_phi = _none_or_array(file.get('delta_phi'))
+            obj.ns = _none_or_array(file.get('ns'))
 
             if obj.f_e_density is not None:
                 obj._interpolate_f_layer()
@@ -811,7 +863,8 @@ class IonModel:
             return self._polar_plot([a, z, dd], title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
                                     cmap=cmap)
         else:
-            return self._polar_plot(self.delta_phi, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi, cmap=cmap)
+            return self._polar_plot(self.delta_phi, title=title, label=label, cblim=cblim, file=file, dir=dir, dpi=dpi,
+                                    cmap=cmap)
 
     def _polar_plot(self, data, title=None, label=None, cblim=None, file=None, dir=None, dpi=300, cmap='viridis'):
         import matplotlib.pyplot as plt

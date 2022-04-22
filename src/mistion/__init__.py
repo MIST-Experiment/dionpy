@@ -1,5 +1,6 @@
 import warnings
-from .IonModel import IonModel, srange, n_f, refr_angle, check_latlon
+from .IonModel import IonModel, srange, n_f, refr_angle, check_latlon, nu_p, nu_p_warm
+from .FProfile import FProfile
 
 from .scripts.build_iri import build_iri
 
