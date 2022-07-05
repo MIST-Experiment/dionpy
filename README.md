@@ -1,4 +1,4 @@
-# mist_ion
+# mistion
 A fork of [mist_ionosphere](https://github.com/erika-hornecker/mist_ionosphere). 
 Mist_ion provides tools for ionosphere modeling (refraction angles, attenuation factors, etc.)
 for the [MIST](http://www.physics.mcgill.ca/mist/) project. A more detailed overview will be 
