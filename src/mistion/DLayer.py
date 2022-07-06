@@ -5,10 +5,11 @@ import itertools
 
 import numpy as np
 import pymap3d as pm
+import healpy as hp
 import iricore
 
 from mistion.modules.collision_models import col_aggarwal, col_nicolet, col_setty
-from mistion.modules.helpers import check_latlon, Ellipsoid, generate_grid, OrderError
+from mistion.modules.helpers import Ellipsoid, sky2ll, check_elaz_shape
 from mistion.modules.ion_tools import srange, d_atten, trop_refr, nu_p
 
 
@@ -56,147 +57,81 @@ def _d_temp_density_star(pars):
 
 class DLayer:
     def __init__(
-        self,
-        dt,
-        position,
-        dbot=60,
-        dtop=90,
-        ndlayers=10,
-        elrange=None,
-        azrange=None,
-        gridsize=50,
+            self,
+            dt,
+            position,
+            dbot=60,
+            dtop=90,
+            ndlayers=10,
+            nside=256,
     ):
-        check_latlon(position[0], position[1])
         self.dbot = dbot
         self.dtop = dtop
         self.ndlayers = ndlayers
         self.dt = dt
-        self.lat0, self.lon0, self.alt0 = position
+        self.position = position
 
-        if elrange is None:
-            self.elrange = (0, 90)
-        else:
-            self.elrange = elrange
-
-        if azrange is None:
-            self.azrange = (0, 360)
-        else:
-            self.azrange = azrange
-
-        self.gridsize = gridsize
-
-        self._d_e_density = None
-        self._d_e_temp = None
-
-        self._interp_ded = None
-        self._interp_deda = None
-        self._interp_det = None
-        self._interp_deta = None
-
-    def _interpolate_d_layer(self, kind="cubic"):
-        from scipy.interpolate import interp2d
-
-        az_vals = np.linspace(*self.azrange, self.gridsize, endpoint=True)
-        el_vals = np.linspace(*self.elrange, self.gridsize)
-        self._interp_ded = [
-            interp2d(
-                el_vals,
-                az_vals,
-                self._d_e_density[:, i].reshape(self.gridsize, self.gridsize),
-                kind=kind,
-            )
-            for i in range(self.ndlayers)
-        ]
-        aver_data = self._d_e_density.mean(axis=1)
-        self._interp_deda = interp2d(
-            el_vals,
-            az_vals,
-            aver_data.reshape(self.gridsize, self.gridsize),
-            kind=kind,
+        self.nside = nside
+        self._rdeg = 10  # radius of disc queried to healpy
+        self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
+        self._obs_pixels = hp.query_disc(
+            self.nside, self._posvec, np.deg2rad(self._rdeg), inclusive=True
         )
-        self._interp_det = [
-            interp2d(
-                el_vals,
-                az_vals,
-                self._d_e_temp[:, i].reshape(self.gridsize, self.gridsize),
-                kind=kind,
-            )
-            for i in range(self.ndlayers)
-        ]
-        self._interp_deta = interp2d(
-            el_vals,
-            az_vals,
-            self._d_e_temp.mean(axis=1).reshape(self.gridsize, self.gridsize),
-            kind=kind,
+        self._obs_lons, self._obs_lats = hp.pix2ang(
+            self.nside, self._obs_pixels, lonlat=True
         )
 
-    def calc(self, nproc=1, pbar=True, batch=500):
+        self._d_e_density = np.empty((len(self._obs_pixels), ndlayers))
+        self._d_e_temp = np.empty((len(self._obs_pixels), ndlayers))
+
+        self._calc()
+
+    def _calc(self):
         """
         Calculates all necessary values for ionosphere impact modeling - D-layer [electron density, electron
         temperature, attenuation factor, average temperature] and F-layer [electron density, angle of the outgoing
         refracted beam at each layer, the net deviation of the elevation angle for each coordinate, refractive index
         at each layer].
         """
-        el, az = generate_grid(*self.elrange, *self.azrange, self.gridsize)
-        cpus = cpu_count()
-        if cpus < nproc:
-            nproc = cpus
-            warnings.warn(
-                f"You have only {cpus} cpu threads available. Setting number of processes to {cpus}.",
-                RuntimeWarning,
-                stacklevel=2,
+        d_heights = np.linspace(self.dbot, self.dtop, self.ndlayers)
+        for i in tqdm(range(self.ndlayers)):
+            res = iricore.IRI(
+                self.dt,
+                [d_heights[i], d_heights[i], 1],
+                self._obs_lats,
+                self._obs_lons,
+                replace_missing=0,
             )
-        nbatches = len(el) // batch + 1
-        if nbatches < nproc:
-            nbatches = len(el) // 150 + 1
-            warnings.warn(
-                f"Selected batch size is not optimal. Setting batch size to 150.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-        el_batches = np.array_split(el, nbatches)
-        az_batches = np.array_split(az, nbatches)
-
-        with Pool(processes=nproc) as pool:
-            dlayer = list(
-                tqdm(
-                    pool.imap(
-                        _d_temp_density_star,
-                        zip(
-                            itertools.repeat(self.dt),
-                            itertools.repeat(self.dbot),
-                            itertools.repeat(self.dtop),
-                            itertools.repeat(self.ndlayers),
-                            el_batches,
-                            az_batches,
-                            itertools.repeat(self.lat0),
-                            itertools.repeat(self.lon0),
-                            itertools.repeat(self.alt0),
-                        ),
-                    ),
-                    total=len(el_batches),
-                    disable=not pbar,
-                    desc="D-layer",
-                )
-            )
-            self._d_e_density = np.vstack([d[0] for d in dlayer])
-            self._d_e_temp = np.vstack([d[1] for d in dlayer])
-
-        self._interpolate_d_layer()
+            self._d_e_density[:, i] = res["ne"][:, 0]
+            self._d_e_temp[:, i] = res["te"][:, 0]
         return
 
-    def _check_elaz(self, el, az, size_err=True):
-        if el is None or az is None:
-            el = np.linspace(*self.elrange, self.gridsize)
-            az = np.linspace(*self.azrange, self.gridsize)
+    def ded(self, el, az, layer=None):
+        check_elaz_shape(el, az)
+        dheights = np.linspace(self.dbot, self.dtop, self.ndlayers)
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        if layer is None:
+            ded = np.empty((*el.shape, self.ndlayers))
+            for i in range(self.ndlayers):
+                map_[self._obs_pixels] = self._d_e_density[:, i]
+                obs_lat, obs_lon = sky2ll(el, az, dheights[i], self.position)
+                # print(np.min(obs_lat), np.max(obs_lat))
+                # print(np.min(obs_lon), np.max(obs_lon))
+                ded[:, :, i] = hp.pixelfunc.get_interp_val(
+                    map_, obs_lon, obs_lat, lonlat=True
+                )
+            return ded.mean(axis=2)
+        elif isinstance(layer, int) and layer < self.ndlayers + 1:
+            map_[self._obs_pixels] = self._d_e_density[:, layer]
+            obs_lat, obs_lon = sky2ll(el, az, dheights[layer], self.position)
+            ded = hp.pixelfunc.get_interp_val(
+                map_, obs_lon, obs_lat, lonlat=True
+            )
+            return ded
         else:
-            el = np.asarray(el)
-            az = np.asarray(az)
-            if el.size != az.size and size_err:
-                raise ValueError("Elevation and azimuth must have the same size")
-        return el, az
+            raise ValueError(f"The layer value must be integer and be in range [0, {self.ndlayers-1}]")
 
-    def datten(self, freq, el=None, az=None, col_freq="default", troposphere=True):
+    def datten(self, el, az, freq, col_freq="default", troposhpere=True):
         """
         Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
         (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
@@ -204,10 +139,12 @@ class DLayer:
 
         Parameters
         ----------
-        el : None | float | np.ndarray
-            Elevation of observation(s). If not provided - the model's grid will be used.
-        az : None | float | np.ndarray
-            Azimuth of observation(s). If not provided - the model's grid will be used.
+        el : float | np.ndarray
+            Elevation of observation(s).
+        az : float | np.ndarray
+            Azimuth of observation(s).
+        freq : float
+            Frequency of observations in Hz
         col_freq : str, float
             The collision frequency ('default', 'nicolet', 'setty', 'aggrawal', or float in Hz)
         troposhpere : Bool, default=True
@@ -217,14 +154,11 @@ class DLayer:
         -------
         np.ndarray
         """
-        if self._interp_ded is None:
-            raise OrderError(
-                "You must calculate the model first. Try running [model].calc()"
-            )
-        el, az = self._check_elaz(el, az)
+        check_elaz_shape(el, az)
+        datten = np.empty((*el.shape, self.ndlayers))
+
         h_d = self.dbot + (self.dtop - self.dbot) / 2
         delta_h_d = self.dtop - self.dbot
-        d_attenuation = np.empty((el.size, az.size, self.ndlayers))
 
         if col_freq == "default" or "aggrawal":
             col_model = col_aggarwal
@@ -238,21 +172,20 @@ class DLayer:
         heights = np.linspace(self.dbot, self.dtop, self.ndlayers)
 
         theta = np.deg2rad(90 - el)
-        if troposphere:
+        if troposhpere:
             theta += trop_refr(theta)
 
         for i in range(self.ndlayers):
             nu_c = col_model(heights[i])
-            ne = self._interp_ded[i](el, az)
-            ne = np.where(ne > 0, ne, 0)
-            plasma_freq = nu_p(ne)
-            d_attenuation[:, :, i] = d_atten(
+            ded = self.ded(el, az, layer=i)
+            plasma_freq = nu_p(ded)
+            datten[:, :, i] = d_atten(
                 freq, theta, h_d, delta_h_d, plasma_freq, nu_c
             )
-        atten = d_attenuation.mean(axis=2)
-        if atten.size == 1:
-            return atten[0, 0]
-        return atten
+        datten = datten.mean(axis=2)
+        if datten.size == 1:
+            return datten[0, 0]
+        return datten
 
     def datten_rough(self, freq, el=None, az=None, troposphere=True):
         """

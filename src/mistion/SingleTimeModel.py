@@ -2,14 +2,11 @@ import os
 from datetime import datetime
 
 import numpy as np
+import healpy as hp
 
 from .DLayer import DLayer
 from .FLayer import FLayer
-from .modules.helpers import (
-    check_latlon,
-    none_or_array,
-    generate_plot_grid,
-)
+from .modules.helpers import none_or_array
 from .modules.ion_tools import trop_refr
 from typing import Tuple, Union
 
@@ -20,9 +17,7 @@ class SingleTimeModel:
         dt: datetime,
         position: Tuple[float, float, float],
         freq: float,
-        gridsize: int = 50,
-        elrange: Union[Tuple[float, float], None] = None,
-        azrange: Union[Tuple[float, float], None] = None,
+        nside: int = 128,
         dbot: float = 60,
         dtop: float = 90,
         ndlayers: int = 10,
@@ -30,35 +25,23 @@ class SingleTimeModel:
         ftop: float = 90,
         nflayers: int = 30,
     ):
-        check_latlon(position[0], position[1])
-
-        if elrange is None:
-            self.elrange = (0, 90)
-        else:
-            self.elrange = elrange
-
-        if azrange is None:
-            self.azrange = (0, 360)
-        else:
-            self.azrange = azrange
-
         if isinstance(dt, datetime):
             self.dt = dt
         else:
             raise ValueError("Parameter dt must be a datetime object.")
         self.pos = position
         self.freq = freq
-        self.gridsize = gridsize
+        self.nside = nside
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, elrange, azrange, gridsize
+            dt, position, dbot, dtop, ndlayers, nside
         )
         self.flayer = FLayer(
-            dt, position, freq, fbot, ftop, nflayers, elrange, azrange, gridsize
+            dt, position, freq, fbot, ftop, nflayers, nside
         )
 
     def calc(self, nproc=1, pbar=True, batch=500):
         self.dlayer.calc(nproc, pbar, batch)
-        self.flayer.calc(nproc, pbar, batch)
+        # self.flayer.calc(nproc, pbar, batch)
 
     def _check_elaz(self, el, az, size_err=True):
         if el is None or az is None:
@@ -123,7 +106,7 @@ class SingleTimeModel:
                 -------
                 np.ndarray
         """
-        return self.dlayer.datten(self.freq, el, az, col_freq, troposphere)
+        return self.dlayer.datten(el, az, self.freq, col_freq, troposphere)
 
     def save(self, dir=None, name=None):
         import h5py
@@ -218,7 +201,7 @@ class SingleTimeModel:
 
     def _polar_plot(
         self,
-        data,
+        gridsize=100,
         title=None,
         barlabel=None,
         plotlabel=None,
@@ -228,9 +211,14 @@ class SingleTimeModel:
         cmap="viridis",
     ):
         import matplotlib.pyplot as plt
+        el = np.linspace(0, 90, gridsize)
+        az = np.linspace(0, 360, gridsize)
+        els, azs = np.meshgrid(el, az)
         plotlabel = plotlabel or "UTC time: " + datetime.strftime(
             self.dt, "%Y-%m-%d %H:%M"
         )
+
+
         cblim = cblim or (np.min(data[2]), np.max(data[2]))
 
         fig = plt.figure(figsize=(8, 8))

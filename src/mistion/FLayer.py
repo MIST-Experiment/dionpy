@@ -5,9 +5,10 @@ import itertools
 import iricore
 import numpy as np
 import pymap3d as pm
+import healpy as hp
 from tqdm import tqdm
 
-from mistion.modules.helpers import check_latlon, Ellipsoid, generate_grid, OrderError
+from mistion.modules.helpers import Ellipsoid, OrderError
 from mistion.modules.ion_tools import srange, n_f, refr_angle
 
 
@@ -87,10 +88,6 @@ def _calc_flayer(dt, f_bot, f_top, nflayers, els, azs, lat, lon, alt, freq):
         # Refractive indices
         n_next = n_f(f_e_density[:, i], freq)
 
-        # # If this is the last point then use refractive index of vacuum
-        # if i == nflayers - 1:
-        #     n_next = np.ones(ncoords)
-
         # The outgoing angle at the 2nd interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
         delta_theta += theta_ref - theta_inc
@@ -120,7 +117,6 @@ class FLayer:
         azrange=None,
         gridsize=50,
     ):
-        check_latlon(position[0], position[1])
         self.fbot = fbot
         self.ftop = ftop
         self.nflayers = nflayers
@@ -201,10 +197,6 @@ class FLayer:
         refracted beam at each layer, the net deviation of the elevation angle for each coordinate, refractive index
         at each layer].
         """
-
-        el, az = generate_grid(
-            *self.elrange, *self.azrange, self.gridsize
-        )
         cpus = cpu_count()
         if cpus < nproc:
             nproc = cpus
