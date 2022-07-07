@@ -141,5 +141,4 @@ def d_atten(freq, theta, h_d, delta_hd, nu_p, nu_c):
     return _d_atten_high(freq, theta, h_d, delta_hd, nu_p, nu_c)
 
 
-# TODO: Speed up this crap
 d_atten = np.vectorize(d_atten)
