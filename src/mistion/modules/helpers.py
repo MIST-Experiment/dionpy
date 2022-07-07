@@ -1,3 +1,4 @@
+import iricore
 import numpy as np
 from .ion_tools import srange
 from pymap3d import aer2geodetic
@@ -92,3 +93,7 @@ def eval_layer(
         raise ValueError(
             f"The layer value must be integer and be in range [0, {nlayers - 1}]"
         )
+
+
+def iri_star(pars):
+    return iricore.IRI(*pars)

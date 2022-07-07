@@ -1,4 +1,3 @@
-import warnings
 from multiprocessing import Pool, cpu_count
 import itertools
 
@@ -8,7 +7,7 @@ import pymap3d as pm
 import healpy as hp
 from tqdm import tqdm
 
-from mistion.modules.helpers import Ellipsoid, eval_layer
+from mistion.modules.helpers import Ellipsoid, eval_layer, iri_star
 from mistion.modules.ion_tools import srange, n_f, refr_angle, trop_refr
 
 
@@ -21,6 +20,7 @@ class FLayer:
         ftop=90,
         nflayers=30,
         nside=128,
+        autocalc: bool = True
     ):
         self.fbot = fbot
         self.ftop = ftop
@@ -38,9 +38,10 @@ class FLayer:
             self.nside, self._obs_pixels, lonlat=True
         )
 
-        self._f_e_density = np.empty((len(self._obs_pixels), nflayers))
-        self._f_e_temp = np.empty((len(self._obs_pixels), nflayers))
-        self._calc()
+        self.f_e_density = np.zeros((len(self._obs_pixels), nflayers))
+        self.f_e_temp = np.zeros((len(self._obs_pixels), nflayers))
+        if autocalc:
+            self._calc_par()
 
     def _calc(self):
         """
@@ -58,8 +59,33 @@ class FLayer:
                 self._obs_lons,
                 replace_missing=0,
             )
-            self._f_e_density[:, i] = res["ne"][:, 0]
-            self._f_e_temp[:, i] = res["te"][:, 0]
+            self.f_e_density[:, i] = res["ne"][:, 0]
+            self.f_e_temp[:, i] = res["te"][:, 0]
+        return
+
+    def _calc_par(self, pbar=True):
+        nproc = np.min([cpu_count(), self.nflayers])
+        heights = [(h, h, 1) for h in np.linspace(self.fbot, self.ftop, self.nflayers)]
+        with Pool(processes=nproc) as pool:
+            res = list(
+                tqdm(
+                    pool.imap(
+                        iri_star,
+                        zip(
+                            itertools.repeat(self.dt),
+                            heights,
+                            itertools.repeat(self._obs_lats),
+                            itertools.repeat(self._obs_lons),
+                            itertools.repeat(0.),
+                        ),
+                    ),
+                    total=self.nflayers,
+                    disable=not pbar,
+                    desc="F layer",
+                )
+            )
+            self.f_e_density = np.vstack([r["ne"][:, 0] for r in res]).T
+            self.f_e_temp = np.vstack([r["te"][:, 0] for r in res]).T
         return
 
     def fed(self, el, az, layer=None):
@@ -72,7 +98,7 @@ class FLayer:
             self.ftop,
             self.nflayers,
             self._obs_pixels,
-            self._f_e_density,
+            self.f_e_density,
             layer=layer,
         )
 
@@ -86,7 +112,7 @@ class FLayer:
             self.ftop,
             self.nflayers,
             self._obs_pixels,
-            self._f_e_temp,
+            self.f_e_temp,
             layer=layer,
         )
 

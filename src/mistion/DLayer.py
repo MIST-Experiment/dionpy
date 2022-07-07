@@ -1,3 +1,6 @@
+import itertools
+from multiprocessing import cpu_count, Pool
+
 from tqdm import tqdm
 
 import numpy as np
@@ -5,19 +8,20 @@ import healpy as hp
 import iricore
 
 from mistion.modules.collision_models import col_aggarwal, col_nicolet, col_setty
-from mistion.modules.helpers import check_elaz_shape, eval_layer
+from mistion.modules.helpers import check_elaz_shape, eval_layer, iri_star
 from mistion.modules.ion_tools import d_atten, trop_refr, nu_p
 
 
 class DLayer:
     def __init__(
-        self,
-        dt,
-        position,
-        dbot=60,
-        dtop=90,
-        ndlayers=10,
-        nside=128,
+            self,
+            dt,
+            position,
+            dbot=60,
+            dtop=90,
+            ndlayers=10,
+            nside=128,
+            autocalc: bool = True,
     ):
         self.dbot = dbot
         self.dtop = dtop
@@ -35,10 +39,11 @@ class DLayer:
             self.nside, self._obs_pixels, lonlat=True
         )
 
-        self._d_e_density = np.empty((len(self._obs_pixels), ndlayers))
-        self._d_e_temp = np.empty((len(self._obs_pixels), ndlayers))
+        self.d_e_density = np.zeros((len(self._obs_pixels), ndlayers))
+        self.d_e_temp = np.zeros((len(self._obs_pixels), ndlayers))
 
-        self._calc()
+        if autocalc:
+            self._calc_par()
 
     def _calc(self):
         """
@@ -56,8 +61,33 @@ class DLayer:
                 self._obs_lons,
                 replace_missing=0,
             )
-            self._d_e_density[:, i] = res["ne"][:, 0]
-            self._d_e_temp[:, i] = res["te"][:, 0]
+            self.d_e_density[:, i] = res["ne"][:, 0]
+            self.d_e_temp[:, i] = res["te"][:, 0]
+        return
+
+    def _calc_par(self, pbar=True):
+        nproc = np.min([cpu_count(), self.ndlayers])
+        heights = [(h, h, 1) for h in np.linspace(self.dbot, self.dtop, self.ndlayers)]
+        with Pool(processes=nproc) as pool:
+            res = list(
+                tqdm(
+                    pool.imap(
+                        iri_star,
+                        zip(
+                            itertools.repeat(self.dt),
+                            heights,
+                            itertools.repeat(self._obs_lats),
+                            itertools.repeat(self._obs_lons),
+                            itertools.repeat(0.),
+                        ),
+                    ),
+                    total=self.ndlayers,
+                    disable=not pbar,
+                    desc="D layer",
+                )
+            )
+            self.d_e_density = np.vstack([r["ne"][:, 0] for r in res]).T
+            self.d_e_temp = np.vstack([r["te"][:, 0] for r in res]).T
         return
 
     def ded(self, el, az, layer=None):
@@ -70,7 +100,7 @@ class DLayer:
             self.dtop,
             self.ndlayers,
             self._obs_pixels,
-            self._d_e_density,
+            self.d_e_density,
             layer=layer,
         )
 
@@ -84,7 +114,7 @@ class DLayer:
             self.dtop,
             self.ndlayers,
             self._obs_pixels,
-            self._d_e_temp,
+            self.d_e_temp,
             layer=layer,
         )
 

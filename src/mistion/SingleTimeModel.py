@@ -7,33 +7,34 @@ from .DLayer import DLayer
 from .FLayer import FLayer
 from .modules.helpers import none_or_array, elaz_mesh
 from .modules.ion_tools import trop_refr
-from typing import Tuple, Union
+from typing import Tuple
 
 
 class SingleTimeModel:
     def __init__(
-        self,
-        dt: datetime,
-        position: Tuple[float, float, float],
-        nside: int = 128,
-        dbot: float = 60,
-        dtop: float = 90,
-        ndlayers: int = 10,
-        fbot: float = 150,
-        ftop: float = 500,
-        nflayers: int = 30,
+            self,
+            dt: datetime,
+            position: Tuple[float, float, float],
+            nside: int = 128,
+            dbot: float = 60,
+            dtop: float = 90,
+            ndlayers: int = 10,
+            fbot: float = 150,
+            ftop: float = 500,
+            nflayers: int = 30,
+            autocalc: bool = True,
     ):
         if isinstance(dt, datetime):
             self.dt = dt
         else:
             raise ValueError("Parameter dt must be a datetime object.")
-        self.pos = position
+        self.position = position
         self.nside = nside
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside
+            dt, position, dbot, dtop, ndlayers, nside, autocalc
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside
+            dt, position, fbot, ftop, nflayers, nside, autocalc
         )
 
     @staticmethod
@@ -43,7 +44,7 @@ class SingleTimeModel:
         """
         return trop_refr(np.deg2rad(90 - el))
 
-    def frefr(self, el, az):
+    def frefr(self, el, az, freq, troposphere=True):
         """
         Calculates refraction in F layer for a given model of ionosphere. Output is the change of zenith angle theta
         (theta -> theta + dtheta). If coordinates are floats the output will be a single number; if they are arrays -
@@ -61,9 +62,9 @@ class SingleTimeModel:
         dtheta : float : np.ndarray
             Change in elevation in degrees
         """
-        return self.flayer.frefr(el, az)
+        return self.flayer.frefr(el, az, freq, troposphere=troposphere)
 
-    def datten(self, el, az, col_freq="default", troposphere=True):
+    def datten(self, el, az, freq, col_freq="default", troposphere=True):
         """
                 Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
                 (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
@@ -77,116 +78,96 @@ class SingleTimeModel:
                     Azimuth of observation(s). If not provided - the model's grid will be used.
                 col_freq : str, float
                     The collision frequency ('default', 'nicolet', 'setty', 'aggrawal', or float in Hz)
-                troposhpere : Bool, default=True
+                troposphere : Bool, default=True
                     Account for troposphere refraction bias
 
                 Returns
                 -------
                 np.ndarray
         """
-        return self.dlayer.datten(el, az, self.freq, col_freq, troposphere)
+        return self.dlayer.datten(el, az, freq, col_freq, troposphere)
 
-    def save(self, dir=None, name=None):
+    def write_self_to_file(self, file):
+        h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
+        grp = file.create_group(h5dir)
+        meta = grp.create_dataset("meta", shape=(0,))
+        meta.attrs["position"] = self.position
+        meta.attrs["dt"] = self.dt.strftime("%Y-%m-%d %H:%M")
+        meta.attrs["nside"] = self.nside
+
+        meta.attrs["ndlayers"] = self.dlayer.ndlayers
+        meta.attrs["dtop"] = self.dlayer.dtop
+        meta.attrs["dbot"] = self.dlayer.dbot
+
+        meta.attrs["nflayers"] = self.flayer.nflayers
+        meta.attrs["fbot"] = self.flayer.fbot
+        meta.attrs["ftop"] = self.flayer.ftop
+
+        if np.average(self.dlayer.d_e_density) > 0 and np.average(self.flayer.f_e_density) > 0:
+            grp.create_dataset("d_e_density", data=self.dlayer.d_e_density)
+            grp.create_dataset("d_e_temp", data=self.dlayer.d_e_temp)
+            grp.create_dataset("f_e_density", data=self.flayer.f_e_density)
+            grp.create_dataset("f_e_temp", data=self.flayer.f_e_temp)
+
+    def save(self, directory=None, name=None):
         import h5py
+        filename = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
+        directory = directory or "ion_models/"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-        if dir == None:
-            dir = "ion_models/"
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-        if name is None:
-            name = os.path.join(
-                dir,
-                f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}",
-            )
-        else:
-            name = os.path.join(dir, name)
-
+        name = name or filename
+        name = os.path.join(directory, name)
         if not name.endswith(".h5"):
             name += ".h5"
 
-        with h5py.File(name, mode="w") as file:
-            meta = file.create_dataset("meta", shape=(0,))
-            meta.attrs["lat"] = self.pos[0]
-            meta.attrs["lon"] = self.pos[1]
-            meta.attrs["alt"] = self.pos[2]
-            meta.attrs["freq"] = self.freq
-            meta.attrs["dt"] = self.dt.strftime("%Y-%m-%d %H:%M")
-            meta.attrs["gridsize"] = self.gridsize
-
-            meta.attrs["ndlayers"] = self.dlayer.ndlayers
-            meta.attrs["dtop"] = self.dlayer.dtop
-            meta.attrs["dbot"] = self.dlayer.dbot
-
-            meta.attrs["nflayers"] = self.flayer.nflayers
-            meta.attrs["ftop"] = self.flayer.fbot
-            meta.attrs["fbot"] = self.flayer.ftop
-
-            meta.attrs["elstart"] = self.elrange[0]
-            meta.attrs["elend"] = self.elrange[1]
-            meta.attrs["azstart"] = self.azrange[0]
-            meta.attrs["azend"] = self.azrange[1]
-
-            if self.dlayer._d_e_density is not None:
-                file.create_dataset("d_e_density", data=self.dlayer._d_e_density)
-                file.create_dataset("d_e_temp", data=self.dlayer._d_e_temp)
-
-            if self.flayer._f_e_density is not None:
-                file.create_dataset("f_e_density", data=self.flayer._f_e_density)
-                file.create_dataset("f_e_temp", data=self.flayer._f_e_temp)
-                file.create_dataset("dtheta", data=self.flayer._dtheta)
+        file = h5py.File(name, mode="w")
+        self.write_self_to_file(file)
+        file.close()
 
     @classmethod
     def load(cls, path: str):
         import h5py
-
         if not path.endswith(".h5"):
             path += ".h5"
         with h5py.File(path, mode="r") as file:
-            meta = file.get("meta")
+            groups = list(file.keys())
+            if len(groups) > 1:
+                raise RuntimeError("File contains more than one model. Consider reading it with IonModel class.")
+
+            grp = file[groups[0]]
+            meta = grp.get("meta")
             obj = cls(
-                datetime=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
-                position=(
-                    meta.attrs["lat"],
-                    meta.attrs["lon"],
-                    meta.attrs["alt"],
-                ),
-                freq=meta.attrs["freq"],
-                gridsize=meta.attrs["gridsize"],
-                elrange=(meta.attrs["elstart"], meta.attrs["elend"]),
-                azrange=(meta.attrs["azstart"], meta.attrs["azend"]),
+                autocalc=False,
+                dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
+                position=meta.attrs["position"],
+                nside=meta.attrs["nside"],
+
                 dbot=meta.attrs["dbot"],
                 dtop=meta.attrs["dtop"],
                 ndlayers=meta.attrs["ndlayers"],
+
                 fbot=meta.attrs["fbot"],
                 ftop=meta.attrs["ftop"],
                 nflayers=meta.attrs["nflayers"],
             )
+            obj.dlayer.d_e_density = none_or_array(grp.get("d_e_density"))
+            obj.dlayer.d_e_temp = none_or_array(grp.get("d_e_temp"))
 
-            obj.dlayer._d_e_density = none_or_array(file.get("d_e_density"))
-            obj.dlayer._d_e_temp = none_or_array(file.get("d_e_temp"))
-
-            if obj.dlayer._d_e_density is not None:
-                obj.dlayer._interpolate_d_layer()
-
-            obj.flayer._f_e_density = none_or_array(file.get("f_e_density"))
-            obj.flayer._f_e_temp = none_or_array(file.get("f_e_temp"))
-            obj.flayer._dtheta = none_or_array(file.get("dtheta"))
-
-            if obj.flayer._f_e_density is not None:
-                obj.flayer._interpolate_f_layer()
-
+            obj.flayer.f_e_density = none_or_array(grp.get("f_e_density"))
+            obj.flayer.f_e_temp = none_or_array(grp.get("f_e_temp"))
         return obj
 
     def _polar_plot(
-        self,
-        data: Tuple[np.ndarray, np.ndarray, np.ndarray],
-        title=None,
-        barlabel=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            data: Tuple[np.ndarray, np.ndarray, np.ndarray],
+            title=None,
+            barlabel=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
         import matplotlib.pyplot as plt
         plotlabel = plotlabel or "UTC time: " + datetime.strftime(
@@ -222,15 +203,15 @@ class SingleTimeModel:
         return fig
 
     def plot_ded(
-        self,
-        gridsize=100,
-        layer=None,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            gridsize=100,
+            layer=None,
+            title=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
         barlabel = r"$m^-3$"
         if title is None:
@@ -241,7 +222,7 @@ class SingleTimeModel:
         el, az = elaz_mesh(gridsize)
         ded = self.dlayer.ded(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az), 90-el, ded),
+            (np.deg2rad(az), 90 - el, ded),
             title,
             barlabel,
             plotlabel,
@@ -252,15 +233,15 @@ class SingleTimeModel:
         )
 
     def plot_det(
-        self,
-        gridsize=100,
-        layer=None,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            gridsize=100,
+            layer=None,
+            title=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
         barlabel = r"$K^\circ$"
         if title is None:
@@ -342,23 +323,23 @@ class SingleTimeModel:
         )
 
     def plot_datten(
-        self,
-        freq,
-        troposphere=True,
-        gridsize=100,
-        title=None,
-        plotlabel=None,
-        barlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            freq,
+            troposphere=True,
+            gridsize=100,
+            title=None,
+            plotlabel=None,
+            barlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
         el, az = elaz_mesh(gridsize)
         datten = self.dlayer.datten(el, az, freq, troposphere=troposphere)
-        title = title or r"Average $f_{atten}$ in the D layer at " + f"{freq/1e6:.1f} MHz"
+        title = title or r"Average $f_{atten}$ in the D layer at " + f"{freq / 1e6:.1f} MHz"
         return self._polar_plot(
-            (np.deg2rad(az), 90-el, datten),
+            (np.deg2rad(az), 90 - el, datten),
             title,
             barlabel,
             plotlabel,
@@ -396,14 +377,14 @@ class SingleTimeModel:
         )
 
     def plot_troprefr(
-        self,
-        interpolated=True,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap='viridis_r',
+            self,
+            interpolated=True,
+            title=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap='viridis_r',
     ):
         barlabel = r"$\delta \theta$, deg"
         gs = 1000 if interpolated else self.gridsize
