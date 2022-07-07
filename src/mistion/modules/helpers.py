@@ -1,14 +1,7 @@
 import numpy as np
 from .ion_tools import srange
 from pymap3d import aer2geodetic
-
-
-class OrderError(Exception):
-    """
-    Exception indicating incorrect order of simulation routines.
-    """
-
-    pass
+import healpy as hp
 
 
 class Ellipsoid:
@@ -36,7 +29,9 @@ def check_elaz_shape(el, az):
             if not el.shape == az.shape:
                 raise ValueError("Elevation and azimuth must be the same length.")
         else:
-            raise ValueError("Elevation and azimuth must be either floats or numpy arrays.")
+            raise ValueError(
+                "Elevation and azimuth must be either floats or numpy arrays."
+            )
 
 
 def sky2ll(el, az, height, pos):
@@ -73,3 +68,27 @@ def elaz_mesh(gridsize):
     return els, azs
 
 
+def eval_layer(
+    el, az, nside, position, hbot, htop, nlayers, obs_pixels, data, layer=None
+):
+    check_elaz_shape(el, az)
+    heights = np.linspace(hbot, htop, nlayers)
+    map_ = np.zeros(hp.nside2npix(nside)) + hp.UNSEEN
+    if layer is None:
+        res = np.empty((*el.shape, nlayers))
+        for i in range(nlayers):
+            map_[obs_pixels] = data[:, i]
+            obs_lat, obs_lon = sky2ll(el, az, heights[i], position)
+            res[:, :, i] = hp.pixelfunc.get_interp_val(
+                map_, obs_lon, obs_lat, lonlat=True
+            )
+        return res.mean(axis=2)
+    elif isinstance(layer, int) and layer < nlayers + 1:
+        map_[obs_pixels] = data[:, layer]
+        obs_lat, obs_lon = sky2ll(el, az, heights[layer], position)
+        res = hp.pixelfunc.get_interp_val(map_, obs_lon, obs_lat, lonlat=True)
+        return res
+    else:
+        raise ValueError(
+            f"The layer value must be integer and be in range [0, {nlayers - 1}]"
+        )

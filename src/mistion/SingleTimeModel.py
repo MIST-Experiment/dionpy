@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 
 import numpy as np
-import healpy as hp
 
 from .DLayer import DLayer
 from .FLayer import FLayer
@@ -20,8 +19,8 @@ class SingleTimeModel:
         dbot: float = 60,
         dtop: float = 90,
         ndlayers: int = 10,
-        fbot: float = 60,
-        ftop: float = 90,
+        fbot: float = 150,
+        ftop: float = 500,
         nflayers: int = 30,
     ):
         if isinstance(dt, datetime):
@@ -37,26 +36,11 @@ class SingleTimeModel:
             dt, position, fbot, ftop, nflayers, nside
         )
 
-    def _check_elaz(self, el, az, size_err=True):
-        if el is None or az is None:
-            el = np.linspace(*self.elrange, self.gridsize)
-            az = np.linspace(*self.azrange, self.gridsize)
-        else:
-            el = np.asarray(el)
-            az = np.asarray(az)
-            if el.size != az.size and size_err:
-                raise ValueError("Elevation and azimuth must have the same size")
-        return el, az
-
-    def troprefr(self, el=None, az=None):
+    @staticmethod
+    def troprefr(el=None):
         """
-        Refraction in the troposphere in degrees. Depends only on elevation angle; second argument exists to make
-        this method similar to others, but is not required.
+        Refraction in the troposphere in degrees.
         """
-        if az is not None:
-            el, az = self._check_elaz(el, az, size_err=False)
-            el_rows, az_rows = np.meshgrid(el, az)
-            return trop_refr(np.deg2rad(90 - el_rows))
         return trop_refr(np.deg2rad(90 - el))
 
     def frefr(self, el, az):
@@ -285,9 +269,9 @@ class SingleTimeModel:
             else:
                 title = r"$T_e$ " + f"in the {layer} sublayer of the D layer"
         el, az = elaz_mesh(gridsize)
-        ded = self.dlayer.det(el, az, layer)
+        det = self.dlayer.det(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az), 90 - el, ded),
+            (np.deg2rad(az), 90 - el, det),
             title,
             barlabel,
             plotlabel,
@@ -298,35 +282,26 @@ class SingleTimeModel:
         )
 
     def plot_fed(
-        self,
-        interpolated=True,
-        layer=None,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            gridsize=100,
+            layer=None,
+            title=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
-        barlabel = r"$m^-3$"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        if layer is not None:
-            if not 0 < layer <= self.flayer.nflayers:
-                raise ValueError("The layer option must be 0 < layer < nlayers.")
-            fed = self.flayer._interp_fed[layer - 1](el_vals, az_vals)
-            title = (
-                title
-                or r"$n_e$ in the "
-                + f"{layer}/{self.flayer.nflayers} sublayer of the F layer"
-            )
-        else:
-            fed = self.flayer._interp_feda(el_vals, az_vals)
-            title = title or r"Average $n_e$ in the F layer"
+        barlabel = r"$m^{-3}$"
+        if title is None:
+            if layer is None:
+                title = r"Average $n_e$ in the F layer"
+            else:
+                title = r"$n_e$ " + f"in the {layer} sublayer of the F layer"
+        el, az = elaz_mesh(gridsize)
+        fed = self.flayer.fed(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, fed),
+            (np.deg2rad(az), 90 - el, fed),
             title,
             barlabel,
             plotlabel,
@@ -337,35 +312,26 @@ class SingleTimeModel:
         )
 
     def plot_fet(
-        self,
-        interpolated=True,
-        layer=None,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap="viridis",
+            self,
+            gridsize=100,
+            layer=None,
+            title=None,
+            plotlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
         barlabel = r"$K^\circ$"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        if layer is not None:
-            if not 0 < layer <= self.flayer.nflayers:
-                raise ValueError("The layer option must be 0 < layer < nlayers.")
-            fet = self.flayer._interp_fet[layer - 1](el_vals, az_vals)
-            title = (
-                title
-                or r"$T_e$ in the "
-                + f"{layer}/{self.dlayer.ndlayers} sublayer of the F layer"
-            )
-        else:
-            fet = self.flayer._interp_feta(el_vals, az_vals)
-            title = title or r"Average $T_e$ in the F layer"
+        if title is None:
+            if layer is None:
+                title = r"Average $T_e$ in the F layer"
+            else:
+                title = r"$T_e$ " + f"in the {layer} sublayer of the F layer"
+        el, az = elaz_mesh(gridsize)
+        fet = self.flayer.fet(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, fet),
+            (np.deg2rad(az), 90 - el, fet),
             title,
             barlabel,
             plotlabel,
@@ -403,24 +369,23 @@ class SingleTimeModel:
         )
 
     def plot_frefr(
-        self,
-        interpolated=True,
-        title=None,
-        plotlabel=None,
-        cblim=None,
-        saveto=None,
-        dpi=300,
-        cmap='viridis_r',
+            self,
+            freq,
+            troposphere=True,
+            gridsize=100,
+            title=None,
+            plotlabel=None,
+            barlabel=None,
+            cblim=None,
+            saveto=None,
+            dpi=300,
+            cmap="viridis",
     ):
-        barlabel = r"$\delta \theta$, deg"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        frefr = self.flayer.frefr(el_vals, az_vals)
-        title = title or r"Average $f_{atten}$ in the D layer at " + f"{self.freq/1e6} MHz"
+        el, az = elaz_mesh(gridsize)
+        frefr = self.flayer.frefr(el, az, freq, troposphere=troposphere)
+        title = title or r"Refraction $\delta \theta$ in the F layer at " + f"{freq / 1e6:.1f} MHz"
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, frefr),
+            (np.deg2rad(az), 90 - el, frefr),
             title,
             barlabel,
             plotlabel,

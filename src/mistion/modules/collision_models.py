@@ -22,7 +22,9 @@ def col_setty(height):
 
 
 _CUR_DIR = os.path.dirname(os.path.realpath(__file__))
-_NUC_AGG, _HEI_AGG = np.genfromtxt(os.path.join(_CUR_DIR, "col_freq_agg.csv"), delimiter=",", unpack=True)
+_NUC_AGG, _HEI_AGG = np.genfromtxt(
+    os.path.join(_CUR_DIR, "col_freq_agg.csv"), delimiter=",", unpack=True
+)
 _MODEL_AGG = interp1d(_HEI_AGG, _NUC_AGG)
 
 
