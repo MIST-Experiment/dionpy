@@ -72,7 +72,7 @@ class DLayer:
         self.position = position
 
         self.nside = nside
-        self._rdeg = 15  # radius of disc queried to healpy
+        self._rdeg = 12  # radius of disc queried to healpy
         self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
         self._obs_pixels = hp.query_disc(
             self.nside, self._posvec, np.deg2rad(self._rdeg), inclusive=True
@@ -115,8 +115,6 @@ class DLayer:
             for i in range(self.ndlayers):
                 map_[self._obs_pixels] = self._d_e_density[:, i]
                 obs_lat, obs_lon = sky2ll(el, az, dheights[i], self.position)
-                # print(np.min(obs_lat), np.max(obs_lat))
-                # print(np.min(obs_lon), np.max(obs_lon))
                 ded[:, :, i] = hp.pixelfunc.get_interp_val(
                     map_, obs_lon, obs_lat, lonlat=True
                 )
@@ -128,6 +126,29 @@ class DLayer:
                 map_, obs_lon, obs_lat, lonlat=True
             )
             return ded
+        else:
+            raise ValueError(f"The layer value must be integer and be in range [0, {self.ndlayers-1}]")
+
+    def det(self, el, az, layer=None):
+        check_elaz_shape(el, az)
+        dheights = np.linspace(self.dbot, self.dtop, self.ndlayers)
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        if layer is None:
+            det = np.empty((*el.shape, self.ndlayers))
+            for i in range(self.ndlayers):
+                map_[self._obs_pixels] = self._d_e_temp[:, i]
+                obs_lat, obs_lon = sky2ll(el, az, dheights[i], self.position)
+                det[:, :, i] = hp.pixelfunc.get_interp_val(
+                    map_, obs_lon, obs_lat, lonlat=True
+                )
+            return det.mean(axis=2)
+        elif isinstance(layer, int) and layer < self.ndlayers + 1:
+            map_[self._obs_pixels] = self._d_e_temp[:, layer]
+            obs_lat, obs_lon = sky2ll(el, az, dheights[layer], self.position)
+            det = hp.pixelfunc.get_interp_val(
+                map_, obs_lon, obs_lat, lonlat=True
+            )
+            return det
         else:
             raise ValueError(f"The layer value must be integer and be in range [0, {self.ndlayers-1}]")
 
@@ -173,14 +194,14 @@ class DLayer:
 
         theta = np.deg2rad(90 - el)
         if troposphere:
-            print(np.rad2deg(trop_refr(theta)))
-            theta += trop_refr(theta)
-            el -= np.rad2deg(trop_refr(theta))
+            dtheta = trop_refr(theta)
+            theta += dtheta
+            el -= np.rad2deg(dtheta)
         for i in range(self.ndlayers):
             nu_c = col_model(heights[i])
             ded = self.ded(el, az, layer=i)
             plasma_freq = nu_p(ded)
-            datten[:, :, i] = d_atten(freq, theta, h_d, delta_h_d, plasma_freq, nu_c)
+            datten[:, :, i] = d_atten(freq, theta, h_d*1e3, delta_h_d*1e3, plasma_freq, nu_c)
         datten = datten.mean(axis=2)
         if datten.size == 1:
             return datten[0, 0]

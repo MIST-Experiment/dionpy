@@ -109,7 +109,6 @@ class FLayer:
         self,
         dt,
         position,
-        freq,
         fbot=60,
         ftop=90,
         nflayers=30,
@@ -121,7 +120,6 @@ class FLayer:
         self.ftop = ftop
         self.nflayers = nflayers
         self.dt = dt
-        self.freq = freq
         self.lat0, self.lon0, self.alt0 = position
 
         if elrange is None:

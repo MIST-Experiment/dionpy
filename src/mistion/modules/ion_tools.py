@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def srange(theta, alt, R_E=6378100.0):
     """
     Calculates the distance in meters from the telescope to the point (theta, alt).
@@ -19,7 +20,7 @@ def srange(theta, alt, R_E=6378100.0):
         Range in meters
     """
     r = -R_E * np.cos(theta) + np.sqrt(
-        (R_E * np.cos(theta)) ** 2 + alt**2 + 2 * alt * R_E
+        (R_E * np.cos(theta)) ** 2 + alt ** 2 + 2 * alt * R_E
     )
     return r
 
@@ -45,7 +46,7 @@ def nu_p(n_e):
         raise ValueError(
             "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date."
         )
-    return 1 / (2 * np.pi) * np.sqrt((n_e * e**2) / (m_e * epsilon0))
+    return 1 / (2 * np.pi) * np.sqrt((n_e * e ** 2) / (m_e * epsilon0))
 
 
 def n_f(n_e, freq):
@@ -105,10 +106,28 @@ def trop_refr(theta):
     a = 16709.51
     b = -19066.21
     c = 5396.33
-    return 1 / (a + b * theta + c * theta**2)
+    return 1 / (a + b * theta + c * theta ** 2)
 
 
-def d_atten(nu, theta, h_d, delta_hd, nu_p, nu_c):
+def _d_atten_low(freq, theta, h_d, delta_hd, nu_p, nu_c):
+    R_E = 6378100
+    c = 2.99792458e8
+    delta_s = (
+            delta_hd * (1 + h_d / R_E) * (np.cos(theta) ** 2 + 2 * h_d / R_E) ** (-0.5)
+    )
+    datten = np.exp(-(2 * np.pi * nu_p ** 2 * nu_c * delta_s) / (c * (nu_c ** 2 + freq ** 2)))
+    return datten
+
+
+def _d_atten_high(freq, theta, h_d, delta_hd, nu_p, nu_c):
+    itheta = np.deg2rad(np.linspace(70, 85, 50))
+    iatten = _d_atten_low(freq, itheta, h_d, delta_hd, nu_p, nu_c)
+    deg = 2
+    pol = np.poly1d(np.polyfit(itheta, iatten, deg))
+    return pol(theta)
+
+
+def d_atten(freq, theta, h_d, delta_hd, nu_p, nu_c):
     """
     Calculates the attenuation factor from frequency of the signal [Hz], angle [rad],
     altitude of the D-layer midpoint [km], thickness of the D-layer [km], plasma frequency [Hz],
@@ -117,8 +136,10 @@ def d_atten(nu, theta, h_d, delta_hd, nu_p, nu_c):
     """
     R_E = 6378100
     c = 2.99792458e8
-    delta_s = (
-        delta_hd * (1 + h_d / R_E) * (np.cos(theta) ** 2 + 2 * h_d / R_E) ** (-0.5)
-    )
-    f = np.exp(-(2 * np.pi * nu_p**2 * nu_c * delta_s) / (c * (nu_c**2 + nu**2)))
-    return f
+    if theta < 80:
+        return _d_atten_low(freq, theta, h_d, delta_hd, nu_p, nu_c)
+    return _d_atten_high(freq, theta, h_d, delta_hd, nu_p, nu_c)
+
+
+# TODO: Speed up this crap
+d_atten = np.vectorize(d_atten)

@@ -6,7 +6,7 @@ import healpy as hp
 
 from .DLayer import DLayer
 from .FLayer import FLayer
-from .modules.helpers import none_or_array
+from .modules.helpers import none_or_array, elaz_mesh
 from .modules.ion_tools import trop_refr
 from typing import Tuple, Union
 
@@ -16,7 +16,6 @@ class SingleTimeModel:
         self,
         dt: datetime,
         position: Tuple[float, float, float],
-        freq: float,
         nside: int = 128,
         dbot: float = 60,
         dtop: float = 90,
@@ -30,18 +29,13 @@ class SingleTimeModel:
         else:
             raise ValueError("Parameter dt must be a datetime object.")
         self.pos = position
-        self.freq = freq
         self.nside = nside
         self.dlayer = DLayer(
             dt, position, dbot, dtop, ndlayers, nside
         )
         self.flayer = FLayer(
-            dt, position, freq, fbot, ftop, nflayers, nside
+            dt, position, fbot, ftop, nflayers, nside
         )
-
-    def calc(self, nproc=1, pbar=True, batch=500):
-        self.dlayer.calc(nproc, pbar, batch)
-        # self.flayer.calc(nproc, pbar, batch)
 
     def _check_elaz(self, el, az, size_err=True):
         if el is None or az is None:
@@ -201,7 +195,7 @@ class SingleTimeModel:
 
     def _polar_plot(
         self,
-        gridsize=100,
+        data: Tuple[np.ndarray, np.ndarray, np.ndarray],
         title=None,
         barlabel=None,
         plotlabel=None,
@@ -211,14 +205,9 @@ class SingleTimeModel:
         cmap="viridis",
     ):
         import matplotlib.pyplot as plt
-        el = np.linspace(0, 90, gridsize)
-        az = np.linspace(0, 360, gridsize)
-        els, azs = np.meshgrid(el, az)
         plotlabel = plotlabel or "UTC time: " + datetime.strftime(
             self.dt, "%Y-%m-%d %H:%M"
         )
-
-
         cblim = cblim or (np.min(data[2]), np.max(data[2]))
 
         fig = plt.figure(figsize=(8, 8))
@@ -250,7 +239,7 @@ class SingleTimeModel:
 
     def plot_ded(
         self,
-        interpolated=True,
+        gridsize=100,
         layer=None,
         title=None,
         plotlabel=None,
@@ -260,24 +249,15 @@ class SingleTimeModel:
         cmap="viridis",
     ):
         barlabel = r"$m^-3$"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        if layer is not None:
-            if not 0 < layer <= self.dlayer.ndlayers:
-                raise ValueError("The layer option must be 0 < layer < nlayers.")
-            ded = self.dlayer._interp_ded[layer - 1](el_vals, az_vals)
-            title = (
-                title
-                or r"$n_e$ in the "
-                + f"{layer}/{self.dlayer.ndlayers} sublayer of the D layer"
-            )
-        else:
-            ded = self.dlayer._interp_deda(el_vals, az_vals)
-            title = title or r"Average $n_e$ in the D layer"
+        if title is None:
+            if layer is None:
+                title = r"Average $n_e$ in the D layer"
+            else:
+                title = r"$n_e$ " + f"in the {layer} sublayer of the D layer"
+        el, az = elaz_mesh(gridsize)
+        ded = self.dlayer.ded(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, ded),
+            (np.deg2rad(az), 90-el, ded),
             title,
             barlabel,
             plotlabel,
@@ -289,7 +269,7 @@ class SingleTimeModel:
 
     def plot_det(
         self,
-        interpolated=True,
+        gridsize=100,
         layer=None,
         title=None,
         plotlabel=None,
@@ -299,24 +279,15 @@ class SingleTimeModel:
         cmap="viridis",
     ):
         barlabel = r"$K^\circ$"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        if layer is not None:
-            if not 0 < layer <= self.dlayer.ndlayers:
-                raise ValueError("The layer option must be 0 < layer < nlayers.")
-            det = self.dlayer._interp_det[layer - 1](el_vals, az_vals)
-            title = (
-                title
-                or r"$T_e$ in the "
-                + f"{layer}/{self.dlayer.ndlayers} sublayer of the D layer"
-            )
-        else:
-            det = self.dlayer._interp_deta(el_vals, az_vals)
-            title = title or r"Average $T_e$ in the D layer"
+        if title is None:
+            if layer is None:
+                title = r"Average $T_e$ in the D layer"
+            else:
+                title = r"$T_e$ " + f"in the {layer} sublayer of the D layer"
+        el, az = elaz_mesh(gridsize)
+        ded = self.dlayer.det(el, az, layer)
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, det),
+            (np.deg2rad(az), 90 - el, ded),
             title,
             barlabel,
             plotlabel,
@@ -406,7 +377,9 @@ class SingleTimeModel:
 
     def plot_datten(
         self,
-        interpolated=True,
+        freq,
+        troposphere=True,
+        gridsize=100,
         title=None,
         plotlabel=None,
         barlabel=None,
@@ -415,14 +388,11 @@ class SingleTimeModel:
         dpi=300,
         cmap="viridis",
     ):
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        datten = self.dlayer.datten(self.freq, el_vals, az_vals)
-        title = title or r"Average $f_{atten}$ in the D layer at " + f"{self.freq/1e6} MHz"
+        el, az = elaz_mesh(gridsize)
+        datten = self.dlayer.datten(el, az, freq, troposphere=troposphere)
+        title = title or r"Average $f_{atten}$ in the D layer at " + f"{freq/1e6:.1f} MHz"
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, np.log10(1 - datten)),
+            (np.deg2rad(az), 90-el, datten),
             title,
             barlabel,
             plotlabel,

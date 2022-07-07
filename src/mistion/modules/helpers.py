@@ -66,3 +66,10 @@ def sky2ll(el, az, height, pos):
     return obs_lat, obs_lon
 
 
+def elaz_mesh(gridsize):
+    el = np.linspace(0, 90, gridsize, endpoint=True)
+    az = np.linspace(0, 360, gridsize)
+    els, azs = np.meshgrid(el, az)
+    return els, azs
+
+
