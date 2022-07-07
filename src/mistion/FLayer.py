@@ -7,7 +7,7 @@ import pymap3d as pm
 import healpy as hp
 from tqdm import tqdm
 
-from mistion.modules.helpers import Ellipsoid, eval_layer, iri_star
+from mistion.modules.helpers import Ellipsoid, eval_layer, iri_star, check_elaz_shape
 from mistion.modules.ion_tools import srange, n_f, refr_angle, trop_refr
 
 
@@ -120,6 +120,8 @@ class FLayer:
         """
         #TODO
         """
+        check_elaz_shape(el, az)
+        el, az = el.copy(), az.copy()
         R_E = 6378100.0
         ell = Ellipsoid()
         f_heights = np.linspace(self.fbot, self.ftop, self.nflayers) * 1e3

@@ -42,7 +42,7 @@ class SingleTimeModel:
         """
         Refraction in the troposphere in degrees.
         """
-        return trop_refr(np.deg2rad(90 - el))
+        return np.rad2deg(trop_refr(np.deg2rad(90 - el)))
 
     def frefr(self, el, az, freq, troposphere=True):
         """
@@ -176,7 +176,7 @@ class SingleTimeModel:
         cblim = cblim or (np.min(data[2]), np.max(data[2]))
 
         fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection="polar")
+        ax: plt.Axes = fig.add_subplot(111, projection="polar")
         img = ax.pcolormesh(
             data[0],
             data[1],
@@ -186,12 +186,14 @@ class SingleTimeModel:
             vmax=cblim[1],
             shading="auto",
         )
-        ax.set_rticks([90, 60, 30, 0])
+        ax.grid(color="gray")
+        ax.set_rticks([90, 60, 30, 0], Fontsize=30)
+        ax.tick_params(axis='both', which='major', labelsize=10)
         ax.scatter(0, 0, c="red", s=5)
         ax.set_theta_zero_location("S")
-        plt.colorbar(img).set_label(barlabel)
-        plt.title(title)
-        plt.xlabel(plotlabel)
+        plt.colorbar(img, fraction=0.042, pad=0.08).set_label(label=barlabel, size=10)
+        plt.title(title, fontsize=14, pad=20)
+        plt.xlabel(plotlabel, fontsize=10)
 
         if saveto is not None:
             head, tail = os.path.split(saveto)
@@ -204,7 +206,7 @@ class SingleTimeModel:
 
     def plot_ded(
             self,
-            gridsize=100,
+            gridsize=200,
             layer=None,
             title=None,
             plotlabel=None,
@@ -213,7 +215,7 @@ class SingleTimeModel:
             dpi=300,
             cmap="viridis",
     ):
-        barlabel = r"$m^-3$"
+        barlabel = r"$m^{-3}$"
         if title is None:
             if layer is None:
                 title = r"Average $n_e$ in the D layer"
@@ -234,7 +236,7 @@ class SingleTimeModel:
 
     def plot_det(
             self,
-            gridsize=100,
+            gridsize=200,
             layer=None,
             title=None,
             plotlabel=None,
@@ -264,7 +266,7 @@ class SingleTimeModel:
 
     def plot_fed(
             self,
-            gridsize=100,
+            gridsize=200,
             layer=None,
             title=None,
             plotlabel=None,
@@ -294,7 +296,7 @@ class SingleTimeModel:
 
     def plot_fet(
             self,
-            gridsize=100,
+            gridsize=200,
             layer=None,
             title=None,
             plotlabel=None,
@@ -326,10 +328,9 @@ class SingleTimeModel:
             self,
             freq,
             troposphere=True,
-            gridsize=100,
+            gridsize=200,
             title=None,
             plotlabel=None,
-            barlabel=None,
             cblim=None,
             saveto=None,
             dpi=300,
@@ -337,7 +338,8 @@ class SingleTimeModel:
     ):
         el, az = elaz_mesh(gridsize)
         datten = self.dlayer.datten(el, az, freq, troposphere=troposphere)
-        title = title or r"Average $f_{atten}$ in the D layer at " + f"{freq / 1e6:.1f} MHz"
+        title = title or r"Average $f_{a}$ in the D layer at " + f"{freq / 1e6:.1f} MHz"
+        barlabel = None
         return self._polar_plot(
             (np.deg2rad(az), 90 - el, datten),
             title,
@@ -353,10 +355,9 @@ class SingleTimeModel:
             self,
             freq,
             troposphere=True,
-            gridsize=100,
+            gridsize=200,
             title=None,
             plotlabel=None,
-            barlabel=None,
             cblim=None,
             saveto=None,
             dpi=300,
@@ -365,6 +366,7 @@ class SingleTimeModel:
         el, az = elaz_mesh(gridsize)
         frefr = self.flayer.frefr(el, az, freq, troposphere=troposphere)
         title = title or r"Refraction $\delta \theta$ in the F layer at " + f"{freq / 1e6:.1f} MHz"
+        barlabel = r"$deg$"
         return self._polar_plot(
             (np.deg2rad(az), 90 - el, frefr),
             title,
@@ -378,7 +380,7 @@ class SingleTimeModel:
 
     def plot_troprefr(
             self,
-            interpolated=True,
+            gridsize=200,
             title=None,
             plotlabel=None,
             cblim=None,
@@ -386,15 +388,12 @@ class SingleTimeModel:
             dpi=300,
             cmap='viridis_r',
     ):
-        barlabel = r"$\delta \theta$, deg"
-        gs = 1000 if interpolated else self.gridsize
-        az_vals, az_rows, el_vals, el_rows = generate_plot_grid(
-            *self.elrange, *self.azrange, gs
-        )
-        troprefr = self.troprefr(el_vals, az_vals)
-        title = title or r"$\delta \theta$ in the troposphere"
+        el, az = elaz_mesh(gridsize)
+        troprefr = self.troprefr(el)
+        title = title or r"Refraction $\delta \theta$ in the troposphere"
+        barlabel = r"$deg$"
         return self._polar_plot(
-            (np.deg2rad(az_rows), 90 - el_rows, troprefr),
+            (np.deg2rad(az), 90 - el, troprefr),
             title,
             barlabel,
             plotlabel,

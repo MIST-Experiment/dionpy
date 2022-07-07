@@ -142,6 +142,7 @@ class DLayer:
         np.ndarray
         """
         check_elaz_shape(el, az)
+        el, az = el.copy(), az.copy()
         datten = np.empty((*el.shape, self.ndlayers))
 
         h_d = self.dbot + (self.dtop - self.dbot) / 2
