@@ -196,7 +196,7 @@ class DLayer:
                 raise ValueError("Elevation and azimuth must have the same size")
         return el, az
 
-    def datten(self, freq, el=None, az=None, col_freq="default", troposhpere=True):
+    def datten(self, freq, el=None, az=None, col_freq="default", troposphere=True):
         """
         Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
         (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
@@ -238,7 +238,7 @@ class DLayer:
         heights = np.linspace(self.dbot, self.dtop, self.ndlayers)
 
         theta = np.deg2rad(90 - el)
-        if troposhpere:
+        if troposphere:
             theta += trop_refr(theta)
 
         for i in range(self.ndlayers):
