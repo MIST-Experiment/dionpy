@@ -72,7 +72,7 @@ class DLayer:
         self.position = position
 
         self.nside = nside
-        self._rdeg = 10  # radius of disc queried to healpy
+        self._rdeg = 15  # radius of disc queried to healpy
         self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
         self._obs_pixels = hp.query_disc(
             self.nside, self._posvec, np.deg2rad(self._rdeg), inclusive=True
@@ -131,7 +131,7 @@ class DLayer:
         else:
             raise ValueError(f"The layer value must be integer and be in range [0, {self.ndlayers-1}]")
 
-    def datten(self, el, az, freq, col_freq="default", troposhpere=True):
+    def datten(self, el, az, freq, col_freq="default", troposphere=True):
         """
         Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
         (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
@@ -147,7 +147,7 @@ class DLayer:
             Frequency of observations in Hz
         col_freq : str, float
             The collision frequency ('default', 'nicolet', 'setty', 'aggrawal', or float in Hz)
-        troposhpere : Bool, default=True
+        troposphere : Bool, default=True
             Account for troposphere refraction bias
 
         Returns
@@ -172,16 +172,15 @@ class DLayer:
         heights = np.linspace(self.dbot, self.dtop, self.ndlayers)
 
         theta = np.deg2rad(90 - el)
-        if troposhpere:
+        if troposphere:
+            print(np.rad2deg(trop_refr(theta)))
             theta += trop_refr(theta)
-
+            el -= np.rad2deg(trop_refr(theta))
         for i in range(self.ndlayers):
             nu_c = col_model(heights[i])
             ded = self.ded(el, az, layer=i)
             plasma_freq = nu_p(ded)
-            datten[:, :, i] = d_atten(
-                freq, theta, h_d, delta_h_d, plasma_freq, nu_c
-            )
+            datten[:, :, i] = d_atten(freq, theta, h_d, delta_h_d, plasma_freq, nu_c)
         datten = datten.mean(axis=2)
         if datten.size == 1:
             return datten[0, 0]
