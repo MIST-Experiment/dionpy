@@ -1,13 +1,10 @@
-import glob
 import os
 from typing import Tuple
 import tempfile
 import shutil
 from ffmpeg_progress_yield import FfmpegProgress
 
-import cv2
 import numpy as np
-from scipy.interpolate import interp1d
 from tqdm import tqdm
 
 from .SingleTimeModel import SingleTimeModel
