@@ -39,7 +39,6 @@ class DLayer:
         self._obs_lons, self._obs_lats = hp.pix2ang(
             self.nside, self._obs_pixels, lonlat=True
         )
-
         self.d_e_density = np.zeros((len(self._obs_pixels), ndlayers))
         self.d_e_temp = np.zeros((len(self._obs_pixels), ndlayers))
 

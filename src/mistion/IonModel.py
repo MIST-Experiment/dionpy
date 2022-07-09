@@ -141,9 +141,6 @@ class IonModel:
             return [idx, idx]
         return [idx - 1, idx]
 
-    def _prep_interp_call(self, el, az, dt, func, extra_args, par=False):
-
-
     def ded(self, el, az, dt, layer=None):
         idx = self._lr_ind(dt)
         dt1, dt2 = self._dts[idx]
