@@ -20,7 +20,8 @@ class FLayer:
         ftop=90,
         nflayers=30,
         nside=128,
-        autocalc: bool = True
+        autocalc: bool = True,
+        pbar: bool = True,
     ):
         self.fbot = fbot
         self.ftop = ftop
@@ -41,7 +42,7 @@ class FLayer:
         self.f_e_density = np.zeros((len(self._obs_pixels), nflayers))
         self.f_e_temp = np.zeros((len(self._obs_pixels), nflayers))
         if autocalc:
-            self._calc_par()
+            self._calc_par(pbar=pbar)
 
     def _calc(self):
         """

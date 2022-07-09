@@ -22,6 +22,7 @@ class DLayer:
             ndlayers=10,
             nside=128,
             autocalc: bool = True,
+            pbar: bool = True,
     ):
         self.dbot = dbot
         self.dtop = dtop
@@ -43,7 +44,7 @@ class DLayer:
         self.d_e_temp = np.zeros((len(self._obs_pixels), ndlayers))
 
         if autocalc:
-            self._calc_par()
+            self._calc_par(pbar=pbar)
 
     def _calc(self):
         """

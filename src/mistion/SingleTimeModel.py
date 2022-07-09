@@ -5,7 +5,7 @@ import numpy as np
 
 from .DLayer import DLayer
 from .FLayer import FLayer
-from .modules.helpers import none_or_array, elaz_mesh
+from .modules.helpers import none_or_array, elaz_mesh, polar_plot
 from .modules.ion_tools import trop_refr
 from typing import Tuple
 
@@ -23,6 +23,7 @@ class SingleTimeModel:
             ftop: float = 500,
             nflayers: int = 30,
             autocalc: bool = True,
+            pbar: bool = True,
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -31,10 +32,10 @@ class SingleTimeModel:
         self.position = position
         self.nside = nside
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, autocalc
+            dt, position, dbot, dtop, ndlayers, nside, autocalc, pbar
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, autocalc
+            dt, position, fbot, ftop, nflayers, nside, autocalc, pbar
         )
 
     @staticmethod
@@ -126,6 +127,30 @@ class SingleTimeModel:
         file.close()
 
     @classmethod
+    def read_self_from_file(cls, grp):
+        meta = grp.get("meta")
+        obj = cls(
+            autocalc=False,
+            dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
+            position=meta.attrs["position"],
+            nside=meta.attrs["nside"],
+
+            dbot=meta.attrs["dbot"],
+            dtop=meta.attrs["dtop"],
+            ndlayers=meta.attrs["ndlayers"],
+
+            fbot=meta.attrs["fbot"],
+            ftop=meta.attrs["ftop"],
+            nflayers=meta.attrs["nflayers"],
+        )
+        obj.dlayer.d_e_density = none_or_array(grp.get("d_e_density"))
+        obj.dlayer.d_e_temp = none_or_array(grp.get("d_e_temp"))
+
+        obj.flayer.f_e_density = none_or_array(grp.get("f_e_density"))
+        obj.flayer.f_e_temp = none_or_array(grp.get("f_e_temp"))
+        return obj
+
+    @classmethod
     def load(cls, path: str):
         import h5py
         if not path.endswith(".h5"):
@@ -133,76 +158,12 @@ class SingleTimeModel:
         with h5py.File(path, mode="r") as file:
             groups = list(file.keys())
             if len(groups) > 1:
-                raise RuntimeError("File contains more than one model. Consider reading it with IonModel class.")
+                raise RuntimeError("File contains more than one model. " +
+                                   "Consider reading it with IonModel class.")
 
             grp = file[groups[0]]
-            meta = grp.get("meta")
-            obj = cls(
-                autocalc=False,
-                dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
-                position=meta.attrs["position"],
-                nside=meta.attrs["nside"],
-
-                dbot=meta.attrs["dbot"],
-                dtop=meta.attrs["dtop"],
-                ndlayers=meta.attrs["ndlayers"],
-
-                fbot=meta.attrs["fbot"],
-                ftop=meta.attrs["ftop"],
-                nflayers=meta.attrs["nflayers"],
-            )
-            obj.dlayer.d_e_density = none_or_array(grp.get("d_e_density"))
-            obj.dlayer.d_e_temp = none_or_array(grp.get("d_e_temp"))
-
-            obj.flayer.f_e_density = none_or_array(grp.get("f_e_density"))
-            obj.flayer.f_e_temp = none_or_array(grp.get("f_e_temp"))
+            obj = cls.read_self_from_file(grp)
         return obj
-
-    def _polar_plot(
-            self,
-            data: Tuple[np.ndarray, np.ndarray, np.ndarray],
-            title=None,
-            barlabel=None,
-            plotlabel=None,
-            cblim=None,
-            saveto=None,
-            dpi=300,
-            cmap="viridis",
-    ):
-        import matplotlib.pyplot as plt
-        plotlabel = plotlabel or "UTC time: " + datetime.strftime(
-            self.dt, "%Y-%m-%d %H:%M"
-        )
-        cblim = cblim or (np.min(data[2]), np.max(data[2]))
-
-        fig = plt.figure(figsize=(8, 8))
-        ax: plt.Axes = fig.add_subplot(111, projection="polar")
-        img = ax.pcolormesh(
-            data[0],
-            data[1],
-            data[2],
-            cmap=cmap,
-            vmin=cblim[0],
-            vmax=cblim[1],
-            shading="auto",
-        )
-        ax.grid(color="gray")
-        ax.set_rticks([90, 60, 30, 0], Fontsize=30)
-        ax.tick_params(axis='both', which='major', labelsize=10)
-        ax.scatter(0, 0, c="red", s=5)
-        ax.set_theta_zero_location("S")
-        plt.colorbar(img, fraction=0.042, pad=0.08).set_label(label=barlabel, size=10)
-        plt.title(title, fontsize=14, pad=20)
-        plt.xlabel(plotlabel, fontsize=10)
-
-        if saveto is not None:
-            head, tail = os.path.split(saveto)
-            if not os.path.exists(head):
-                os.makedirs(head)
-            plt.savefig(saveto, dpi=dpi)
-            plt.close(fig)
-            return
-        return fig
 
     def plot_ded(
             self,
@@ -223,7 +184,8 @@ class SingleTimeModel:
                 title = r"$n_e$ " + f"in the {layer} sublayer of the D layer"
         el, az = elaz_mesh(gridsize)
         ded = self.dlayer.ded(el, az, layer)
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, ded),
             title,
             barlabel,
@@ -253,7 +215,8 @@ class SingleTimeModel:
                 title = r"$T_e$ " + f"in the {layer} sublayer of the D layer"
         el, az = elaz_mesh(gridsize)
         det = self.dlayer.det(el, az, layer)
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, det),
             title,
             barlabel,
@@ -283,7 +246,8 @@ class SingleTimeModel:
                 title = r"$n_e$ " + f"in the {layer} sublayer of the F layer"
         el, az = elaz_mesh(gridsize)
         fed = self.flayer.fed(el, az, layer)
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, fed),
             title,
             barlabel,
@@ -313,7 +277,8 @@ class SingleTimeModel:
                 title = r"$T_e$ " + f"in the {layer} sublayer of the F layer"
         el, az = elaz_mesh(gridsize)
         fet = self.flayer.fet(el, az, layer)
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, fet),
             title,
             barlabel,
@@ -340,7 +305,8 @@ class SingleTimeModel:
         datten = self.dlayer.datten(el, az, freq, troposphere=troposphere)
         title = title or r"Average $f_{a}$ in the D layer at " + f"{freq / 1e6:.1f} MHz"
         barlabel = None
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, datten),
             title,
             barlabel,
@@ -361,13 +327,14 @@ class SingleTimeModel:
             cblim=None,
             saveto=None,
             dpi=300,
-            cmap="viridis",
+            cmap="viridis_r",
     ):
         el, az = elaz_mesh(gridsize)
         frefr = self.flayer.frefr(el, az, freq, troposphere=troposphere)
         title = title or r"Refraction $\delta \theta$ in the F layer at " + f"{freq / 1e6:.1f} MHz"
         barlabel = r"$deg$"
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, frefr),
             title,
             barlabel,
@@ -392,7 +359,8 @@ class SingleTimeModel:
         troprefr = self.troprefr(el)
         title = title or r"Refraction $\delta \theta$ in the troposphere"
         barlabel = r"$deg$"
-        return self._polar_plot(
+        return polar_plot(
+            self.dt,
             (np.deg2rad(az), 90 - el, troprefr),
             title,
             barlabel,

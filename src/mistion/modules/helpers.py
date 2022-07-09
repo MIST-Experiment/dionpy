@@ -1,8 +1,28 @@
+import os
+from datetime import datetime
+from typing import Tuple
+
 import iricore
 import numpy as np
+from scipy.interpolate import interp1d
+
 from .ion_tools import srange
 from pymap3d import aer2geodetic
 import healpy as hp
+import matplotlib
+
+
+class TextColor:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
 
 
 class Ellipsoid:
@@ -22,6 +42,54 @@ def none_or_array(vals):
     if vals is None:
         return None
     return np.array(vals)
+
+
+def polar_plot(
+        dt,
+        data: Tuple[np.ndarray, np.ndarray, np.ndarray],
+        title=None,
+        barlabel=None,
+        plotlabel=None,
+        cblim=None,
+        saveto=None,
+        dpi=300,
+        cmap="viridis",
+):
+    import matplotlib.pyplot as plt
+    plotlabel = plotlabel or "UTC time: " + datetime.strftime(
+        dt, "%Y-%m-%d %H:%M"
+    )
+    cblim = cblim or (np.min(data[2]), np.max(data[2]))
+
+    fig = plt.figure(figsize=(8, 8))
+    ax: plt.Axes = fig.add_subplot(111, projection="polar")
+    img = ax.pcolormesh(
+        data[0],
+        data[1],
+        data[2],
+        cmap=cmap,
+        vmin=cblim[0],
+        vmax=cblim[1],
+        shading="auto",
+    )
+    ax.grid(color="gray", linestyle=":")
+    ax.set_theta_zero_location("S")
+    ax.set_rticks([90, 60, 30, 0], Fontsize=30)
+    ax.tick_params(axis='both', which='major', labelsize=11)
+    ax.tick_params(axis='y', which='major', labelcolor='gray')
+    # ax.scatter(0, 0, c="red", s=5)
+    plt.colorbar(img, fraction=0.042, pad=0.08).set_label(label=barlabel, size=10)
+    plt.title(title, fontsize=14, pad=20)
+    plt.xlabel(plotlabel, fontsize=10)
+
+    if saveto is not None:
+        head, tail = os.path.split(saveto)
+        if not os.path.exists(head):
+            os.makedirs(head)
+        plt.savefig(saveto, dpi=dpi, bbox_inches='tight')
+        plt.close(fig)
+        return
+    return fig
 
 
 def check_elaz_shape(el, az):
@@ -97,3 +165,18 @@ def eval_layer(
 
 def iri_star(pars):
     return iricore.IRI(*pars)
+
+
+def calc_interp_val(data1, data2, dt1, dt2, dt):
+    if dt1 == dt2:
+        return data1
+
+    x = np.asarray([0, (dt2 - dt1).total_seconds()])
+    y = np.asarray([data1, data2])
+    linmod = interp1d(x, y, axis=0)
+    x_in = (dt - dt1).total_seconds()
+    return linmod(x_in)
+
+
+def calc_interp_val_star(pars):
+    return calc_interp_val(*pars)

@@ -3,22 +3,22 @@ import os
 from scipy.interpolate import interp1d
 
 
-def col_nicolet(height):
+def col_nicolet(h):
     """
     #TODO
     """
     a = -0.16184565
     b = 28.02068763
-    return np.exp(a * height + b)
+    return np.exp(a * h + b)
 
 
-def col_setty(height):
+def col_setty(h):
     """
     #TODO
     """
     a = -0.16018896
     b = 26.14939429
-    return np.exp(a * height + b)
+    return np.exp(a * h + b)
 
 
 _CUR_DIR = os.path.dirname(os.path.realpath(__file__))
