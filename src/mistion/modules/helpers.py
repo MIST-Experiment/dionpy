@@ -1,15 +1,18 @@
+import itertools
 import os
 from datetime import datetime
-from typing import Tuple
+from multiprocessing import Pool, cpu_count
+from typing import Tuple, Union
+import matplotlib.pyplot as plt
 
 import iricore
 import numpy as np
 from scipy.interpolate import interp1d
+from tqdm import tqdm
 
 from .ion_tools import srange
 from pymap3d import aer2geodetic
 import healpy as hp
-import matplotlib
 
 
 class TextColor:
@@ -45,8 +48,9 @@ def none_or_array(vals):
 
 
 def polar_plot(
-        dt,
         data: Tuple[np.ndarray, np.ndarray, np.ndarray],
+        dt: Union[datetime, None] = None,
+        pos: Union[Tuple[float, float, float], None] = None,
         title=None,
         barlabel=None,
         plotlabel=None,
@@ -54,11 +58,14 @@ def polar_plot(
         saveto=None,
         dpi=300,
         cmap="viridis",
+        cbformat=None
 ):
-    import matplotlib.pyplot as plt
-    plotlabel = plotlabel or "UTC time: " + datetime.strftime(
-        dt, "%Y-%m-%d %H:%M"
-    )
+    if plotlabel is None:
+        plotlabel = ""
+        if pos is not None:
+            plotlabel += f"Position: lat={pos[0]:.3f}, lon={pos[1]:.3f}\n"
+        if dt is not None:
+            plotlabel += "UTC time: " + datetime.strftime(dt, "%Y-%m-%d %H:%M")
     cblim = cblim or (np.min(data[2]), np.max(data[2]))
 
     fig = plt.figure(figsize=(8, 8))
@@ -78,10 +85,9 @@ def polar_plot(
     ax.tick_params(axis='both', which='major', labelsize=11)
     ax.tick_params(axis='y', which='major', labelcolor='gray')
     # ax.scatter(0, 0, c="red", s=5)
-    plt.colorbar(img, fraction=0.042, pad=0.08).set_label(label=barlabel, size=10)
+    plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat).set_label(label=barlabel, size=10)
     plt.title(title, fontsize=14, pad=20)
     plt.xlabel(plotlabel, fontsize=10)
-
     if saveto is not None:
         head, tail = os.path.split(saveto)
         if not os.path.exists(head):
@@ -90,6 +96,10 @@ def polar_plot(
         plt.close(fig)
         return
     return fig
+
+
+def polar_plot_star(pars):
+    return polar_plot(*pars)
 
 
 def check_elaz_shape(el, az):
@@ -138,7 +148,7 @@ def elaz_mesh(gridsize):
 
 
 def eval_layer(
-    el, az, nside, position, hbot, htop, nlayers, obs_pixels, data, layer=None
+        el, az, nside, position, hbot, htop, nlayers, obs_pixels, data, layer=None
 ):
     check_elaz_shape(el, az)
     heights = np.linspace(hbot, htop, nlayers)
@@ -167,7 +177,7 @@ def iri_star(pars):
     return iricore.IRI(*pars)
 
 
-def calc_interp_val(data1, data2, dt1, dt2, dt):
+def interp_val(data1, data2, dt1, dt2, dt):
     if dt1 == dt2:
         return data1
 
@@ -178,5 +188,42 @@ def calc_interp_val(data1, data2, dt1, dt2, dt):
     return linmod(x_in)
 
 
+def interp_val_star(pars):
+    return interp_val(*pars)
+
+
+def calc_interp_val(el, az, funcs, dts, *args, **kwargs):
+    data1 = funcs[0](el, az, *args, **kwargs)
+    data2 = funcs[1](el, az, *args, **kwargs)
+    return interp_val(data1, data2, *dts)
+
+
 def calc_interp_val_star(pars):
-    return calc_interp_val(*pars)
+    return calc_interp_val(*pars[:-2], *pars[-2], **pars[-1])
+
+
+def calc_interp_val_par(el, az, funcs, dts, pbar_desc, *args, **kwargs):
+    nproc = np.min([cpu_count(), len(funcs)])
+    disable = True if pbar_desc is None else False
+    rep_args = [args for i in range(len(dts))]
+    rep_kwargs = [kwargs for i in range(len(dts))]
+    with Pool(processes=nproc) as pool:
+        res = list(
+            tqdm(
+                pool.imap(
+                    calc_interp_val_star,
+                    zip(
+                        itertools.repeat(el),
+                        itertools.repeat(az),
+                        funcs,
+                        dts,
+                        rep_args,
+                        rep_kwargs,
+                    ),
+                ),
+                total=len(dts),
+                disable=disable,
+                desc=pbar_desc,
+            )
+        )
+    return np.array(res)

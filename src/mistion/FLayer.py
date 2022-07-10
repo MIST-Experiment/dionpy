@@ -20,8 +20,8 @@ class FLayer:
         ftop=90,
         nflayers=30,
         nside=128,
-        autocalc: bool = True,
         pbar: bool = True,
+        _autocalc: bool = True,
     ):
         self.fbot = fbot
         self.ftop = ftop
@@ -41,7 +41,7 @@ class FLayer:
 
         self.f_e_density = np.zeros((len(self._obs_pixels), nflayers))
         self.f_e_temp = np.zeros((len(self._obs_pixels), nflayers))
-        if autocalc:
+        if _autocalc:
             self._calc_par(pbar=pbar)
 
     def _calc(self):
@@ -65,8 +65,13 @@ class FLayer:
         return
 
     def _calc_par(self, pbar=True):
-        nproc = np.min([cpu_count(), self.nflayers])
-        heights = [(h, h, 1) for h in np.linspace(self.fbot, self.ftop, self.nflayers)]
+        batch = 1000
+        nbatches = len(self._obs_pixels) // batch + 1
+        nproc = np.min([cpu_count(), nbatches])
+        blat = np.array_split(self._obs_lats, nbatches)
+        blon = np.array_split(self._obs_lons, nbatches)
+        heights = (self.fbot, self.ftop, (self.ftop - self.fbot) / (self.nflayers - 1))
+
         with Pool(processes=nproc) as pool:
             res = list(
                 tqdm(
@@ -74,19 +79,19 @@ class FLayer:
                         iri_star,
                         zip(
                             itertools.repeat(self.dt),
-                            heights,
-                            itertools.repeat(self._obs_lats),
-                            itertools.repeat(self._obs_lons),
+                            itertools.repeat(heights),
+                            blat,
+                            blon,
                             itertools.repeat(0.),
                         ),
                     ),
-                    total=self.nflayers,
+                    total=nbatches,
                     disable=not pbar,
                     desc="F layer",
                 )
             )
-            self.f_e_density = np.vstack([r["ne"][:, 0] for r in res]).T
-            self.f_e_temp = np.vstack([r["te"][:, 0] for r in res]).T
+            self.f_e_density = np.vstack([r["ne"] for r in res])
+            self.f_e_temp = np.vstack([r["te"] for r in res])
         return
 
     def fed(self, el, az, layer=None):
