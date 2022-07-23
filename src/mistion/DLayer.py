@@ -71,7 +71,7 @@ class DLayer:
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
         blon = np.array_split(self._obs_lons, nbatches)
-        heights = (self.dbot, self.dtop, (self.dtop-self.dbot)/(self.ndlayers-1))
+        heights = (self.dbot, self.dtop, (self.dtop-self.dbot)/(self.ndlayers-1) - 1e-6)
 
         with Pool(processes=nproc) as pool:
             res = list(
@@ -123,7 +123,7 @@ class DLayer:
             layer=layer,
         )
 
-    def datten(self, el, az, freq, col_freq="default", troposphere=True):
+    def atten(self, el, az, freq, col_freq="default", troposphere=True):
         """
         Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
         (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
@@ -148,7 +148,7 @@ class DLayer:
         """
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
-        datten = np.empty((*el.shape, self.ndlayers))
+        atten = np.empty((*el.shape, self.ndlayers))
 
         h_d = self.dbot + (self.dtop - self.dbot) / 2
         delta_h_d = self.dtop - self.dbot
@@ -174,10 +174,10 @@ class DLayer:
             nu_c = col_model(heights[i])
             ded = self.ded(el, az, layer=i)
             plasma_freq = nu_p(ded)
-            datten[:, :, i] = d_atten(
+            atten[:, :, i] = d_atten(
                 freq, theta, h_d * 1e3, delta_h_d * 1e3, plasma_freq, nu_c
             )
-        datten = datten.mean(axis=2)
-        if datten.size == 1:
-            return datten[0, 0]
-        return datten
+        atten = atten.mean(axis=2)
+        if atten.size == 1:
+            return atten[0, 0]
+        return atten

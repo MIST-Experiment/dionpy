@@ -1,10 +1,9 @@
 import itertools
 import os
 from multiprocessing import Pool, cpu_count
-from typing import Tuple
+from typing import Tuple, Union, List, Callable
 import tempfile
 import shutil
-from ffmpeg_progress_yield import FfmpegProgress
 
 import numpy as np
 from tqdm import tqdm
@@ -12,16 +11,31 @@ from tqdm import tqdm
 from .IonFrame import IonFrame
 from datetime import datetime, timedelta
 
-from .modules.helpers import (
-    elaz_mesh,
-    TextColor,
-    calc_interp_val,
-    calc_interp_val_par,
-    polar_plot_star,
-)
+from .modules.helpers import elaz_mesh, TextColor, pic2vid, is_iterable
+from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
+from .modules.plotting import polar_plot_star
 
 
 class IonModel:
+    """
+    A dynamic model of the ionosphere. Uses a sequence of :class:`IonFrame` objects to
+    interpolate ionospheric refraction and attenuation in the specified time range.
+
+    :param dt_start: Start date/time of the model.
+    :param dt_end: End date/time of the model.
+    :param position: Geographical position of an observer. Must be a tuple containing
+                     latitude [deg], longitude [deg], and elevation [m].
+    :param mph: Number of static models per hour.
+    :param nside: Resolution of healpix grid.
+    :param dbot: Lower limit in [km] of the D layer of the ionosphere.
+    :param dtop: Upper limit in [km] of the D layer of the ionosphere.
+    :param ndlayers: Number of sub-layers in the D layer for intermediate calculations.
+    :param fbot: Lower limit in [km] of the F layer of the ionosphere.
+    :param ftop: Upper limit in [km] of the F layer of the ionosphere.
+    :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param _autocalc: If True - the model will be calculated immediately after definition.
+    """
+
     def __init__(
         self,
         dt_start: datetime,
@@ -48,6 +62,13 @@ class IonModel:
             [dt_start + tdelta * i for i in range(nmodels + 1)]
         ).astype(datetime)
 
+        self.dbot = dbot
+        self.dtop = dtop
+        self.ndlayers = ndlayers
+        self.fbot = fbot
+        self.ftop = ftop
+        self.nflayers = nflayers
+
         self.position = position
         self.mph = mph
         self.nside = nside
@@ -65,12 +86,18 @@ class IonModel:
                         fbot,
                         ftop,
                         nflayers,
-                        pbar=False,
+                        _pbar=False,
                         _autocalc=_autocalc,
                     )
                 )
 
-    def save(self, directory=None, name=None):
+    def save(self, directory: str = None, name: str = None):
+        """
+        Save the model to a file.
+
+        :param directory: Path to directory to save the model.
+        :param name: Name of the file (extension is not required).
+        """
         import h5py
 
         filename = (
@@ -96,13 +123,25 @@ class IonModel:
         meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
         meta.attrs["nside"] = self.nside
         meta.attrs["mph"] = self.mph
+        meta.attrs["dbot"] = self.dbot
+        meta.attrs["dtop"] = self.dtop
+        meta.attrs["ndlayers"] = self.ndlayers
+        meta.attrs["fbot"] = self.fbot
+        meta.attrs["ftop"] = self.ftop
+        meta.attrs["nflayers"] = self.nflayers
 
         for model in self.models:
             model.write_self_to_file(file)
         file.close()
 
     @classmethod
-    def load(cls, path: str):
+    def load(cls, path: str) -> "IonModel":
+        """
+        Load a model from file.
+
+        :param path: Path to a file (file extension is not required).
+        :return: :class:`IonModel` recovered from a file.
+        """
         import h5py
 
         if not path.endswith(".h5"):
@@ -121,19 +160,28 @@ class IonModel:
                 )
             meta = file.get("meta")
             obj = cls(
-                autocalc=False,
+                _autocalc=False,
                 dt_start=datetime.strptime(meta.attrs["dt_start"], "%Y-%m-%d %H:%M"),
                 dt_end=datetime.strptime(meta.attrs["dt_end"], "%Y-%m-%d %H:%M"),
                 position=meta.attrs["position"],
                 nside=meta.attrs["nside"],
                 mph=meta.attrs["mph"],
+                dbot=meta.attrs["dbot"],
+                dtop=meta.attrs["dtop"],
+                ndlayers=meta.attrs["ndlayers"],
+                fbot=meta.attrs["fbot"],
+                ftop=meta.attrs["ftop"],
+                nflayers=meta.attrs["nflayers"],
             )
             for group in groups:
                 grp = file[group]
                 obj.models.append(IonFrame.read_self_from_file(grp))
             return obj
 
-    def _lr_ind(self, dt):
+    def _lr_ind(self, dt: datetime) -> [int, int]:
+        """
+        Calculates indices on the left and on the right of the specified date
+        """
         if (dt - self.dt_start).total_seconds() < 0 or (
             self.dt_end - dt
         ).total_seconds() < 0:
@@ -146,7 +194,19 @@ class IonModel:
             return [idx, idx]
         return [idx - 1, idx]
 
-    def _parallel_calc(self, el, az, dt, funcs, pbar_desc, *args, **kwargs):
+    def _parallel_calc(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime], np.ndarray],
+        funcs: List[Callable],
+        pbar_desc: str,
+        *args,
+        **kwargs,
+    ) -> Union[float, np.ndarray]:
+        """
+        Sends methods either to serial or parallel calculation routines based on type of dt.
+        """
         if (isinstance(dt, list) or isinstance(dt, np.ndarray)) and len(dt) > 1:
             idx = [self._lr_ind(i) for i in dt]
             dts = [self._dts[i] for i in idx]
@@ -159,75 +219,226 @@ class IonModel:
             funcs = [funcs[idx[0]], funcs[idx[1]]]
             return calc_interp_val(el, az, funcs, [dt1, dt2, dt], *args, **kwargs)
 
-    def ded(self, el, az, dt, layer=None, _pbar_desc=None):
+    def ded(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime]],
+        layer: int = None,
+        _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores.
+        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Electron density in [m^-3] in the D layer of the ionosphere.
+        """
         funcs = [m.dlayer.ded for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
-    def det(self, el, az, dt, layer=None, _pbar_desc=None):
+    def det(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime]],
+        layer: int = None,
+        _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores.
+        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Electron temperature in [K] in the D layer of the ionosphere.
+        """
         funcs = [m.dlayer.det for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
-    def fed(self, el, az, dt, layer=None, _pbar_desc=None):
+    def fed(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime]],
+        layer: int = None,
+        _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores.
+        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Electron density in [m^-3] in the F layer of the ionosphere.
+        """
         funcs = [m.flayer.fed for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
-    def fet(self, el, az, dt, layer=None, _pbar_desc=None):
+    def fet(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime]],
+        layer: int = None,
+        _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores.
+        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Electron temperature in [K] in the F layer of the ionosphere.
+        """
         funcs = [m.flayer.fet for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
-    def datten(
-        self, el, az, dt, freq, col_freq="default", troposphere=True, _pbar_desc=None
-    ):
-        funcs = [m.dlayer.datten for m in self.models]
-        return self._parallel_calc(
-            el,
-            az,
-            dt,
-            funcs,
-            _pbar_desc,
-            freq,
-            col_freq=col_freq,
-            troposphere=troposphere,
+    def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
+        """
+        :param dt: Date/time of the frame.
+        :param recalc: If True - the :class:`IonFrame` object will be precisely calculated. If False - an interpolation
+                       of two closest frames will be used.
+        :return: :class:`IonFrame` at specified time.
+        """
+        if dt in self._dts:
+            idx = np.argwhere(self._dts == dt)
+            return self.models[idx[0][0]]
+        obj = IonFrame(
+            dt=dt,
+            position=self.position,
+            nside=self.nside,
+            dbot=self.dbot,
+            dtop=self.dtop,
+            ndlayers=self.ndlayers,
+            fbot=self.fbot,
+            ftop=self.ftop,
+            nflayers=self.nflayers,
+            _pbar=False,
+            _autocalc=recalc,
         )
+        if recalc:
+            return obj
+        else:
+            idx = self._lr_ind(dt)
+            obj.dlayer.d_e_density = interp_val(
+                self.models[idx[0]].dlayer.d_e_density,
+                self.models[idx[1]].dlayer.d_e_density,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            obj.dlayer.d_e_temp = interp_val(
+                self.models[idx[0]].dlayer.d_e_temp,
+                self.models[idx[1]].dlayer.d_e_temp,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            obj.flayer.f_e_density = interp_val(
+                self.models[idx[0]].flayer.f_e_density,
+                self.models[idx[1]].flayer.f_e_density,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            obj.flayer.f_e_temp = interp_val(
+                self.models[idx[0]].flayer.f_e_temp,
+                self.models[idx[1]].flayer.f_e_temp,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            return obj
 
-    def frefr(self, el, az, dt, freq, troposphere=True, _pbar_desc=None):
-        funcs = [m.flayer.frefr for m in self.models]
+    def atten(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime], np.ndarray],
+        freq: Union[float, np.ndarray],
+        col_freq="default",
+        troposphere=True,
+        _pbar_desc=None,
+    ):
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores. Requires `freq` to be a single float.
+        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+                     available cores. Requires `dt` to be a single datetime object.
+        :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
+                         or float in Hz.
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
+                 attenuation factor between 0
+        (total attenuation) and 1 (no attenuation).
+        """
+        if is_iterable(freq) and not is_iterable(dt):
+            model = self.at(dt)
+            return model.atten(el, az, freq, _pbar_desc=_pbar_desc, col_freq=col_freq, troposphere=troposphere)
+        elif is_iterable(dt) and not is_iterable(freq):
+            funcs = [m.dlayer.atten for m in self.models]
+            return self._parallel_calc(
+                el,
+                az,
+                dt,
+                funcs,
+                _pbar_desc,
+                freq,
+                col_freq=col_freq,
+                troposphere=troposphere,
+            )
+        else:
+            raise ValueError("Both datetime and frequency cannot be iterables at the same call.")
+
+    def refr(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        dt: Union[datetime, List[datetime], np.ndarray],
+        freq: Union[float, np.ndarray],
+        troposphere=True,
+        _pbar_desc=None,
+    ):
+        """
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+                   cores. Requires `freq` to be a single float.
+        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+                     available cores. Requires `dt` to be a single datetime object.
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
+        """
+        funcs = [m.flayer.refr for m in self.models]
         return self._parallel_calc(
             el, az, dt, funcs, _pbar_desc, freq, troposphere=troposphere
         )
 
     @staticmethod
-    def troprefr(el=None):
+    def troprefr(el: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        """
+        Approximation of the refraction in the troposphere recommended by the ITU-R:
+        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
+
+        :param el: Elevation of observation(s) in [deg].
+        :return: Refraction in the troposphere in [deg].
+        """
         return IonFrame.troprefr(el)
 
-    @staticmethod
-    def _pic2vid(
-        imdir: str,
-        vidname: str,
-        savedir: str = "animations",
-        fps: int = 20,
-        desc=None,
-    ):
-        if not vidname.endswith(".mp4"):
-            vidname += ".mp4"
-        desc = desc or "Rendering video"
-        cmd = [
-            "ffmpeg",
-            "-r",
-            f"{fps}",
-            "-i",
-            os.path.join(imdir, "%06d.png"),
-            "-vcodec",
-            "libx265",
-            "-y",
-            os.path.join(savedir, vidname),
-        ]
-        ff = FfmpegProgress(cmd)
-        with tqdm(total=100, position=1, desc=desc) as pbar:
-            for progress in ff.run_command_with_progress():
-                pbar.update(progress - pbar.n)
-
-    def _nframes2dts(self, nframes):
+    def _nframes2dts(self, nframes: Union[int, None]) -> List[datetime]:
+        """
+        Returns a list of datetimes for animation based on specified number of frames (fps * duration).
+        """
         if nframes is None:
             dts = self._dts
         else:
@@ -241,20 +452,23 @@ class IonModel:
 
     def _time_animation(
         self,
-        func,
-        name,
-        extra_args,
-        gridsize=100,
-        fps=20,
-        duration=5,
-        savedir="animations/",
-        title=None,
-        barlabel=None,
-        plotlabel=None,
-        dpi=300,
-        cmap="viridis",
-        pbar_label="",
+        func: Callable,
+        name: str,
+        freq: Union[float, None] = None,
+        gridsize: int = 100,
+        fps: int = 20,
+        duration: int = 5,
+        savedir: str = "animations/",
+        title: str = None,
+        barlabel: str = None,
+        plotlabel: str = None,
+        dpi: int = 300,
+        cmap: str = "viridis",
+        pbar_label: str = "",
     ):
+        """
+        Abstract method for generating animations.
+        """
         print(
             TextColor.BOLD
             + TextColor.BLUE
@@ -266,6 +480,7 @@ class IonModel:
         el, az = elaz_mesh(gridsize)
         nframes = duration * fps
         dts = self._nframes2dts(nframes)
+        extra_args = [arg for arg in [freq] if arg is not None]
         data = np.array(
             func(el, az, dts, *extra_args, _pbar_desc="[1/3] Calculating data")
         )
@@ -286,6 +501,7 @@ class IonModel:
                             plot_data,
                             dts,
                             itertools.repeat(self.position),
+                            itertools.repeat(freq),
                             itertools.repeat(title),
                             itertools.repeat(barlabel),
                             itertools.repeat(plotlabel),
@@ -300,98 +516,107 @@ class IonModel:
                 )
             )
         desc = "[3/3] Rendering video"
-        self._pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
+        pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
 
         shutil.rmtree(tmpdir)
         return
 
-    def animate_datten_vs_time(self, name, freq, title=None, barlabel=None, **kwargs):
-        title = (
-            title or r"Attenuation factor $(1 - f_{a})$ " + f"at {freq / 1e6:.2f} MHz"
-        )
+    def animate_atten_vs_time(self, name: str, freq: float, **kwargs):
+        """
+        Generates an animation of attenuation factor change with time.
+
+        :param name: Name of file.
+        :param freq: Frequency of observation.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
         self._time_animation(
-            lambda *args, **kwargs: 1 - self.datten(*args, **kwargs),
+            self.atten,
             name,
-            [freq],
-            title=title,
-            barlabel=barlabel,
-            dpi=300,
-            cmap="viridis_r",
+            freq=freq,
             pbar_label="D layer attenuation",
             **kwargs,
         )
 
-    def animate_frefr_vs_time(self, name, freq, title=None, barlabel=None, **kwargs):
-        title = title or r"Refraction $\delta \theta$ " + f"at {freq / 1e6:.2f} MHz"
-        barlabel = barlabel or r"$deg$"
+    def animate_refr_vs_time(self, name: str, freq: float, cmap: str = "viridis_r", **kwargs):
+        """
+        Generates an animation of refraction angle change with time.
+
+        :param name: Name of file.
+        :param freq: Frequency of observation.
+        :param cmap: Matplotlib colormap to use in plot.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
+        barlabel = r"$deg$"
         self._time_animation(
-            self.frefr,
+            self.refr,
             name,
-            [freq],
-            title=title,
+            freq=freq,
             barlabel=barlabel,
-            dpi=300,
-            cmap="viridis_r",
             pbar_label="F layer refraction",
+            cmap=cmap,
             **kwargs,
         )
 
-    def animate_ded_vs_time(self, name, title=None, barlabel=None, **kwargs):
-        title = title or r"Electron density $n_e$ in the D layer"
-        barlabel = barlabel or r"$m^{-3}$"
+    def animate_ded_vs_time(self, name: str, **kwargs):
+        """
+        Generates an animation of change of electron temperature in the D layer with time.
+
+        :param name: Name of file.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
+        barlabel = r"$m^{-3}$"
         self._time_animation(
             self.ded,
             name,
-            [],
-            title=title,
             barlabel=barlabel,
-            dpi=300,
-            cmap="viridis",
             pbar_label="D layer electron density",
             **kwargs,
         )
 
-    def animate_det_vs_time(self, name, title=None, barlabel=None, **kwargs):
-        title = title or r"Electron temperature $T_e$ in the D layer"
-        barlabel = barlabel or r"$^\circ K$"
+    def animate_det_vs_time(self, name: str, **kwargs):
+        """
+        Generates an animation of change of electron density in the D layer with time.
+
+        :param name: Name of file.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
+        barlabel = r"$^\circ K$"
         self._time_animation(
             self.det,
             name,
-            [],
-            title=title,
             barlabel=barlabel,
-            dpi=300,
-            cmap="viridis",
             pbar_label="D layer electron temperature",
             **kwargs,
         )
 
-    def animate_fed_vs_time(self, name, title=None, barlabel=None, **kwargs):
-        title = title or r"Electron density $n_e$ in the F layer"
-        barlabel = barlabel or r"$m^{-3}$"
+    def animate_fed_vs_time(self, name: str, **kwargs):
+        """
+        Generates an animation of change of electron density in the F layer with time.
+
+        :param name: Name of file.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
+        barlabel = r"$m^{-3}$"
         self._time_animation(
             self.fed,
             name,
-            [],
-            title=title,
             barlabel=barlabel,
-            dpi=300,
-            cmap="viridis",
             pbar_label="F layer electron density",
             **kwargs,
         )
 
-    def animate_fet_vs_time(self, name, title=None, barlabel=None, **kwargs):
-        title = title or r"Electron temperature $T_e$ in the F layer"
-        barlabel = barlabel or r"$^\circ K$"
+    def animate_fet_vs_time(self, name: str, **kwargs):
+        """
+        Generates an animation of change of electron temperature in the F layer with time.
+
+        :param name: Name of file.
+        :param kwargs: See `mistion.plot_kwargs`.
+        """
+        barlabel = r"$^\circ K$"
         self._time_animation(
             self.fet,
             name,
-            [],
-            title=title,
             barlabel=barlabel,
-            dpi=300,
-            cmap="viridis",
             pbar_label="F layer electron temperature",
             **kwargs,
         )

@@ -70,7 +70,7 @@ class FLayer:
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
         blon = np.array_split(self._obs_lons, nbatches)
-        heights = (self.fbot, self.ftop, (self.ftop - self.fbot) / (self.nflayers - 1))
+        heights = (self.fbot, self.ftop, (self.ftop - self.fbot) / (self.nflayers - 1) - 1e-6)
 
         with Pool(processes=nproc) as pool:
             res = list(
@@ -122,7 +122,7 @@ class FLayer:
             layer=layer,
         )
 
-    def frefr(self, el, az, freq, troposphere=True):
+    def refr(self, el, az, freq, troposphere=True):
         """
         #TODO
         """

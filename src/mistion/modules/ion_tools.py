@@ -100,8 +100,7 @@ def trop_refr(theta):
 
     Notes
     -----
-    Approximation is recommended by the ITU-R:
-    https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
+
     """
     a = 16709.51
     b = -19066.21
