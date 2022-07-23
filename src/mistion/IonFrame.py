@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
+from typing import Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -12,8 +13,6 @@ from .DLayer import DLayer
 from .FLayer import FLayer
 from .modules.helpers import none_or_array, elaz_mesh, TextColor, pic2vid
 from .modules.ion_tools import trop_refr
-from typing import Tuple, Union
-
 from .modules.parallel import calc_refatt_par, calc_refatt
 from .modules.plotting import polar_plot_star, polar_plot
 
@@ -39,19 +38,20 @@ class IonFrame:
     :param _pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
+
     def __init__(
-        self,
-        dt: datetime,
-        position: Tuple[float, float, float],
-        nside: int = 128,
-        dbot: float = 60,
-        dtop: float = 90,
-        ndlayers: int = 10,
-        fbot: float = 150,
-        ftop: float = 500,
-        nflayers: int = 30,
-        _pbar: bool = False,
-        _autocalc: bool = True,
+            self,
+            dt: datetime,
+            position: Tuple[float, float, float],
+            nside: int = 128,
+            dbot: float = 60,
+            dtop: float = 90,
+            ndlayers: int = 10,
+            fbot: float = 150,
+            ftop: float = 500,
+            nflayers: int = 30,
+            _pbar: bool = False,
+            _autocalc: bool = True,
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -147,8 +147,8 @@ class IonFrame:
         meta.attrs["ftop"] = self.flayer.ftop
 
         if (
-            np.average(self.dlayer.d_e_density) > 0
-            and np.average(self.flayer.f_e_density) > 0
+                np.average(self.dlayer.d_e_density) > 0
+                and np.average(self.flayer.f_e_density) > 0
         ):
             grp.create_dataset("d_e_density", data=self.dlayer.d_e_density)
             grp.create_dataset("d_e_temp", data=self.dlayer.d_e_temp)
@@ -300,21 +300,21 @@ class IonFrame:
         )
 
     def _freq_animation(
-        self,
-        func,
-        name,
-        freqrange=(45e6, 125e6),
-        gridsize=100,
-        fps=20,
-        duration=5,
-        savedir="animations/",
-        title=None,
-        barlabel=None,
-        plotlabel=None,
-        dpi=300,
-        cmap="viridis",
-        cbformat="%.2f",
-        pbar_label="",
+            self,
+            func,
+            name,
+            freqrange=(45e6, 125e6),
+            gridsize=100,
+            fps=20,
+            duration=5,
+            savedir="animations/",
+            title=None,
+            barlabel=None,
+            plotlabel=None,
+            dpi=300,
+            cmap="viridis",
+            cbformat="%.2f",
+            pbar_label="",
     ):
         print(
             TextColor.BOLD
@@ -350,7 +350,6 @@ class IonFrame:
                             itertools.repeat(title),
                             itertools.repeat(barlabel),
                             itertools.repeat(plotlabel),
-                            # itertools.repeat(None),
                             itertools.repeat((cbmin, cbmax)),
                             plot_saveto,
                             itertools.repeat(dpi),

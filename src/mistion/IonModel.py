@@ -1,16 +1,15 @@
 import itertools
 import os
+import shutil
+import tempfile
+from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
 from typing import Tuple, Union, List, Callable
-import tempfile
-import shutil
 
 import numpy as np
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
-from datetime import datetime, timedelta
-
 from .modules.helpers import elaz_mesh, TextColor, pic2vid, is_iterable
 from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
 from .modules.plotting import polar_plot_star
@@ -37,19 +36,19 @@ class IonModel:
     """
 
     def __init__(
-        self,
-        dt_start: datetime,
-        dt_end: datetime,
-        position: Tuple[float, float, float],
-        mph: int = 1,
-        nside: int = 128,
-        dbot: float = 60,
-        dtop: float = 90,
-        ndlayers: int = 10,
-        fbot: float = 150,
-        ftop: float = 500,
-        nflayers: int = 30,
-        _autocalc: bool = True,
+            self,
+            dt_start: datetime,
+            dt_end: datetime,
+            position: Tuple[float, float, float],
+            mph: int = 1,
+            nside: int = 128,
+            dbot: float = 60,
+            dtop: float = 90,
+            ndlayers: int = 10,
+            fbot: float = 150,
+            ftop: float = 500,
+            nflayers: int = 30,
+            _autocalc: bool = True,
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
             raise ValueError("Parameters dt_start and dt_end must be datetime objects.")
@@ -101,11 +100,11 @@ class IonModel:
         import h5py
 
         filename = (
-            f"ionmodel_{self.dt_start.year:04d}{self.dt_start.month:02d}"
-            + f"{self.dt_start.day:02d}{self.dt_start.hour:02d}"
-            + f"{self.dt_start.minute:02d}{self.dt_end.year:04d}"
-            + f"{self.dt_end.month:02d}{self.dt_end.day:02d}"
-            + f"{self.dt_end.hour:02d}{self.dt_end.minute:02d}"
+                f"ionmodel_{self.dt_start.year:04d}{self.dt_start.month:02d}"
+                + f"{self.dt_start.day:02d}{self.dt_start.hour:02d}"
+                + f"{self.dt_start.minute:02d}{self.dt_end.year:04d}"
+                + f"{self.dt_end.month:02d}{self.dt_end.day:02d}"
+                + f"{self.dt_end.hour:02d}{self.dt_end.minute:02d}"
         )
         directory = directory or "ion_models/"
         if not os.path.exists(directory):
@@ -183,7 +182,7 @@ class IonModel:
         Calculates indices on the left and on the right of the specified date
         """
         if (dt - self.dt_start).total_seconds() < 0 or (
-            self.dt_end - dt
+                self.dt_end - dt
         ).total_seconds() < 0:
             raise ValueError(
                 f"Datetime must be within precalculated range "
@@ -195,14 +194,14 @@ class IonModel:
         return [idx - 1, idx]
 
     def _parallel_calc(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime], np.ndarray],
-        funcs: List[Callable],
-        pbar_desc: str,
-        *args,
-        **kwargs,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime], np.ndarray],
+            funcs: List[Callable],
+            pbar_desc: str,
+            *args,
+            **kwargs,
     ) -> Union[float, np.ndarray]:
         """
         Sends methods either to serial or parallel calculation routines based on type of dt.
@@ -220,12 +219,12 @@ class IonModel:
             return calc_interp_val(el, az, funcs, [dt1, dt2, dt], *args, **kwargs)
 
     def ded(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime]],
-        layer: int = None,
-        _pbar_desc: Union[str, None] = None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime]],
+            layer: int = None,
+            _pbar_desc: Union[str, None] = None,
     ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -240,12 +239,12 @@ class IonModel:
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def det(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime]],
-        layer: int = None,
-        _pbar_desc: Union[str, None] = None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime]],
+            layer: int = None,
+            _pbar_desc: Union[str, None] = None,
     ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -260,12 +259,12 @@ class IonModel:
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def fed(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime]],
-        layer: int = None,
-        _pbar_desc: Union[str, None] = None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime]],
+            layer: int = None,
+            _pbar_desc: Union[str, None] = None,
     ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -280,12 +279,12 @@ class IonModel:
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def fet(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime]],
-        layer: int = None,
-        _pbar_desc: Union[str, None] = None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime]],
+            layer: int = None,
+            _pbar_desc: Union[str, None] = None,
     ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -357,14 +356,14 @@ class IonModel:
             return obj
 
     def atten(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime], np.ndarray],
-        freq: Union[float, np.ndarray],
-        col_freq="default",
-        troposphere=True,
-        _pbar_desc=None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime], np.ndarray],
+            freq: Union[float, np.ndarray],
+            col_freq="default",
+            troposphere=True,
+            _pbar_desc=None,
     ):
         """
         :param el: Elevation of observation(s) in [deg].
@@ -400,13 +399,13 @@ class IonModel:
             raise ValueError("Both datetime and frequency cannot be iterables at the same call.")
 
     def refr(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        dt: Union[datetime, List[datetime], np.ndarray],
-        freq: Union[float, np.ndarray],
-        troposphere=True,
-        _pbar_desc=None,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            dt: Union[datetime, List[datetime], np.ndarray],
+            freq: Union[float, np.ndarray],
+            troposphere=True,
+            _pbar_desc=None,
     ):
         """
         :param el: Elevation of observation(s) in [deg].
@@ -451,20 +450,20 @@ class IonModel:
         return dts
 
     def _time_animation(
-        self,
-        func: Callable,
-        name: str,
-        freq: Union[float, None] = None,
-        gridsize: int = 100,
-        fps: int = 20,
-        duration: int = 5,
-        savedir: str = "animations/",
-        title: str = None,
-        barlabel: str = None,
-        plotlabel: str = None,
-        dpi: int = 300,
-        cmap: str = "viridis",
-        pbar_label: str = "",
+            self,
+            func: Callable,
+            name: str,
+            freq: Union[float, None] = None,
+            gridsize: int = 100,
+            fps: int = 20,
+            duration: int = 5,
+            savedir: str = "animations/",
+            title: str = None,
+            barlabel: str = None,
+            plotlabel: str = None,
+            dpi: int = 300,
+            cmap: str = "viridis",
+            pbar_label: str = "",
     ):
         """
         Abstract method for generating animations.

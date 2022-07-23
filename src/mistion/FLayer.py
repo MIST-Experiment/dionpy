@@ -1,10 +1,10 @@
-from multiprocessing import Pool, cpu_count
 import itertools
+from multiprocessing import Pool, cpu_count
 
+import healpy as hp
 import iricore
 import numpy as np
 import pymap3d as pm
-import healpy as hp
 from tqdm import tqdm
 
 from mistion.modules.helpers import Ellipsoid, eval_layer, iri_star, check_elaz_shape
@@ -13,15 +13,15 @@ from mistion.modules.ion_tools import srange, n_f, refr_angle, trop_refr
 
 class FLayer:
     def __init__(
-        self,
-        dt,
-        position,
-        fbot=60,
-        ftop=90,
-        nflayers=30,
-        nside=128,
-        pbar: bool = True,
-        _autocalc: bool = True,
+            self,
+            dt,
+            position,
+            fbot=60,
+            ftop=90,
+            nflayers=30,
+            nside=128,
+            pbar: bool = True,
+            _autocalc: bool = True,
     ):
         self.fbot = fbot
         self.ftop = ftop
@@ -150,7 +150,7 @@ class FLayer:
         d_cur = R_E + f_heights[0]  # Distance from Earth center to layer
 
         # The inclination angle at the 1st interface using law of cosines [rad]
-        costheta_inc = (r_slant**2 + d_cur**2 - d_tel**2) / (2 * r_slant * d_cur)
+        costheta_inc = (r_slant ** 2 + d_cur ** 2 - d_tel ** 2) / (2 * r_slant * d_cur)
         assert (costheta_inc <= 1).all(), "Something is wrong with coordinates."
         theta_inc = np.arccos(costheta_inc)
 
