@@ -40,18 +40,18 @@ class IonFrame:
     """
 
     def __init__(
-            self,
-            dt: datetime,
-            position: Tuple[float, float, float],
-            nside: int = 128,
-            dbot: float = 60,
-            dtop: float = 90,
-            ndlayers: int = 10,
-            fbot: float = 150,
-            ftop: float = 500,
-            nflayers: int = 30,
-            _pbar: bool = False,
-            _autocalc: bool = True,
+        self,
+        dt: datetime,
+        position: Tuple[float, float, float],
+        nside: int = 128,
+        dbot: float = 60,
+        dtop: float = 90,
+        ndlayers: int = 10,
+        fbot: float = 150,
+        ftop: float = 500,
+        nflayers: int = 30,
+        _pbar: bool = False,
+        _autocalc: bool = True,
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -59,8 +59,12 @@ class IonFrame:
             raise ValueError("Parameter dt must be a datetime object.")
         self.position = position
         self.nside = nside
-        self.dlayer = DLayer(dt, position, dbot, dtop, ndlayers, nside, _pbar, _autocalc)
-        self.flayer = FLayer(dt, position, fbot, ftop, nflayers, nside, _pbar, _autocalc)
+        self.dlayer = DLayer(
+            dt, position, dbot, dtop, ndlayers, nside, _pbar, _autocalc
+        )
+        self.flayer = FLayer(
+            dt, position, fbot, ftop, nflayers, nside, _pbar, _autocalc
+        )
 
     @staticmethod
     def _parallel_calc(func, el, az, freq, pbar_desc, **kwargs):
@@ -85,49 +89,47 @@ class IonFrame:
 
     def refr(self, el, az, freq, troposphere=True, _pbar_desc=None):
         """
-        Calculates refraction in F layer for a given model of ionosphere. Output is the change of zenith angle theta
-        (theta -> theta + dtheta). If coordinates are floats the output will be a single number; if they are arrays -
-        the output will be a 2D array with dimensions `az.size` x `el.size` (according to `np.meshgrid(el, az)`).
-
-        Parameters
-        ----------
-        el : None | float | np.ndarray
-            Elevation of observation(s). If not provided - the model's grid will be used.
-        az : None | float | np.ndarray
-            Azimuth of observation(s). If not provided - the model's grid will be used.
-
-        Returns
-        -------
-        dtheta : float : np.ndarray
-            Change in elevation in degrees
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+                     available cores. Requires `dt` to be a single datetime object.
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
         return self._parallel_calc(
             self.flayer.refr, el, az, freq, _pbar_desc, troposphere=troposphere
         )
 
-    def atten(self, el, az, freq, _pbar_desc=None, col_freq="default", troposphere=True):
+    def atten(
+        self,
+        el: Union[float, np.ndarray],
+        az: Union[float, np.ndarray],
+        freq: Union[float, np.ndarray],
+        _pbar_desc: Union[str, None] = None,
+        col_freq: str = "default",
+        troposphere: bool = True,
+    ) -> Union[float, np.ndarray]:
         """
-        Calculates attenuation in D layer for a given model of ionosphere. Output is the attenuation factor between 0
-        (total attenuation) and 1 (no attenuation). If coordinates are floats the output will be a single number; if
-        they are arrays - the output will be a 2D array with dimensions `el.size` x `az.size`.
-
-        Parameters
-        ----------
-        el : None | float | np.ndarray
-            Elevation of observation(s). If not provided - the model's grid will be used.
-        az : None | float | np.ndarray
-            Azimuth of observation(s). If not provided - the model's grid will be used.
-        col_freq : str, float
-            The collision frequency ('default', 'nicolet', 'setty', 'aggrawal', or float in Hz)
-        troposphere : Bool, default=True
-            Account for troposphere refraction bias
-
-        Returns
-        -------
-        np.ndarray
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+                     available cores. Requires `dt` to be a single datetime object.
+        :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
+                         or float in Hz.
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
+        :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
+                 attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
         return self._parallel_calc(
-            self.dlayer.atten, el, az, freq, _pbar_desc, col_freq=col_freq, troposphere=troposphere
+            self.dlayer.atten,
+            el,
+            az,
+            freq,
+            _pbar_desc,
+            col_freq=col_freq,
+            troposphere=troposphere,
         )
 
     def write_self_to_file(self, file):
@@ -147,8 +149,8 @@ class IonFrame:
         meta.attrs["ftop"] = self.flayer.ftop
 
         if (
-                np.average(self.dlayer.d_e_density) > 0
-                and np.average(self.flayer.f_e_density) > 0
+            np.average(self.dlayer.d_e_density) > 0
+            and np.average(self.flayer.f_e_density) > 0
         ):
             grp.create_dataset("d_e_density", data=self.dlayer.d_e_density)
             grp.create_dataset("d_e_temp", data=self.dlayer.d_e_temp)
@@ -272,7 +274,9 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_refr(self, freq, troposphere=True, gridsize=200, cmap="viridis_r", **kwargs):
+    def plot_refr(
+        self, freq, troposphere=True, gridsize=200, cmap="viridis_r", **kwargs
+    ):
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
@@ -300,21 +304,21 @@ class IonFrame:
         )
 
     def _freq_animation(
-            self,
-            func,
-            name,
-            freqrange=(45e6, 125e6),
-            gridsize=100,
-            fps=20,
-            duration=5,
-            savedir="animations/",
-            title=None,
-            barlabel=None,
-            plotlabel=None,
-            dpi=300,
-            cmap="viridis",
-            cbformat="%.2f",
-            pbar_label="",
+        self,
+        func,
+        name,
+        freqrange=(45e6, 125e6),
+        gridsize=100,
+        fps=20,
+        duration=5,
+        savedir="animations/",
+        title=None,
+        barlabel=None,
+        plotlabel=None,
+        dpi=300,
+        cmap="viridis",
+        cbformat="%.2f",
+        pbar_label="",
     ):
         print(
             TextColor.BOLD
@@ -327,9 +331,7 @@ class IonFrame:
         el, az = elaz_mesh(gridsize)
         nframes = duration * fps
         freqs = np.linspace(*freqrange, nframes)[::-1]
-        data = np.array(
-            func(el, az, freqs, _pbar_desc="[1/3] Calculating data")
-        )
+        data = np.array(func(el, az, freqs, _pbar_desc="[1/3] Calculating data"))
         cbmax = np.nanmax(data)
         cbmin = np.nanmin(data)
 

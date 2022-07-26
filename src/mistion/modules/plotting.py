@@ -3,13 +3,13 @@ from datetime import datetime
 from typing import Tuple, Union
 
 import numpy as np
-from matplotlib import pyplot as plt
 from matplotlib import colormaps
+from matplotlib import pyplot as plt
 
 plot_kwargs = {
     "dt": "Datetime object representing a time of an observation. If None - will not be specified under plot.",
     "pos": "List containing geographical latitude [deg], longitude[deg] and altitude[m] representing a position of "
-           " an instrument. If None - will not be specified under plot.",
+    " an instrument. If None - will not be specified under plot.",
     "freq": "Float representing a frequency of an observation. If None - will not be specified under plot.",
     "title": "Title of the plot",
     "barlabel": "Label near colorbar. Most functions override this parameter.",
@@ -17,7 +17,7 @@ plot_kwargs = {
     "cblim": "Tuple containing min and max values of the colorbar scale.",
     "saveto": "Path to save the plot. Must include name. If not specified - the plot will not be saved.",
     "dpi": "Image resolution.",
-    "cmap": "A colormap to use in plot.",
+    "cmap": "A colormap to use in the plot.",
     "cbformat": "Formatter of numbers on the colorbar scale.",
     "nancolor": "A color to fill np.nan in the plot.",
 }
@@ -28,16 +28,22 @@ def polar_plot(
     dt: Union[datetime, None] = None,
     pos: Union[Tuple[float, float, float], None] = None,
     freq: Union[float, None] = None,
-    title=None,
-    barlabel=None,
-    plotlabel=None,
-    cblim=None,
-    saveto=None,
-    dpi=300,
-    cmap="viridis",
-    cbformat=None,
-    nancolor="black",
+    title: Union[str, None] = None,
+    barlabel: Union[str, None] = None,
+    plotlabel: Union[str, None] = None,
+    cblim: Union[Tuple[float, float], None] = None,
+    saveto: Union[str, None] = None,
+    dpi: int = 300,
+    cmap: str = "viridis",
+    cbformat: str = None,
+    nancolor: str = "black",
 ):
+    """
+    A core function for graphic generation on the visible sky field.
+    See all available option listed in mistion.plot_kwargs.
+
+    :return: A matplotlib figure.
+    """
     if plotlabel is None:
         plotlabel = ""
         if pos is not None:
@@ -45,7 +51,7 @@ def polar_plot(
         if dt is not None:
             plotlabel += "UTC time: " + datetime.strftime(dt, "%Y-%m-%d %H:%M") + "\n"
         if freq is not None:
-            plotlabel += f"Frequency: {freq/1e6:.1f} MHz"
+            plotlabel += f"Frequency: {freq / 1e6:.1f} MHz"
 
     cblim = cblim or (np.nanmin(data[2]), np.nanmax(data[2]))
 
@@ -71,7 +77,6 @@ def polar_plot(
     ax.set_rticks([90, 60, 30, 0], Fontsize=30)
     ax.tick_params(axis="both", which="major", labelsize=11)
     ax.tick_params(axis="y", which="major", labelcolor="gray")
-    # ax.scatter(0, 0, c="red", s=5)
     plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat).set_label(
         label=barlabel, size=10
     )

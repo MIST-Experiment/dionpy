@@ -12,12 +12,26 @@ from mistion.modules.ion_tools import srange, n_f, refr_angle, trop_refr
 
 
 class FLayer:
+    """
+    A model of the F layer of the ionosphere. Includes electron density and temperature data after calculation
+    and implements a model of ionospheric refraction.
+
+    :param dt: Date/time of the model.
+    :param position: Geographical position of an observer. Must be a tuple containing
+                     latitude [deg], longitude [deg], and elevation [m].
+    :param fbot: Lower limit in [km] of the F layer of the ionosphere.
+    :param ftop: Upper limit in [km] of the F layer of the ionosphere.
+    :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param nside: Resolution of healpix grid.
+    :param pbar: If True - a progress bar will appear.
+    :param _autocalc: If True - the model will be calculated immediately after definition.
+    """
     def __init__(
             self,
             dt,
             position,
-            fbot=60,
-            ftop=90,
+            fbot=150,
+            ftop=500,
             nflayers=30,
             nside=128,
             pbar: bool = True,
@@ -46,10 +60,8 @@ class FLayer:
 
     def _calc(self):
         """
-        Calculates all necessary values for ionosphere impact modeling - D-layer [electron density, electron
-        temperature, attenuation factor, average temperature] and F-layer [electron density, angle of the outgoing
-        refracted beam at each layer, the net deviation of the elevation angle for each coordinate, refractive index
-        at each layer].
+        Makes a single call to iricore (assuming already implemented parallelism) requesting
+        electron density and electron temperature for future use in attenuation modeling.
         """
         f_heights = np.linspace(self.fbot, self.ftop, self.nflayers)
         for i in tqdm(range(self.nflayers)):
@@ -65,6 +77,10 @@ class FLayer:
         return
 
     def _calc_par(self, pbar=True):
+        """
+        Makes several calls to iricore in parallel requesting electron density and
+        electron temperature for future use in attenuation modeling.
+        """
         batch = 1000
         nbatches = len(self._obs_pixels) // batch + 1
         nproc = np.min([cpu_count(), nbatches])
@@ -95,6 +111,13 @@ class FLayer:
         return
 
     def fed(self, el, az, layer=None):
+        """
+        :param el: Elevation of an observation.
+        :param az: Azimuth of an observation.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the F layer.
+        """
         return eval_layer(
             el,
             az,
@@ -109,6 +132,13 @@ class FLayer:
         )
 
     def fet(self, el, az, layer=None):
+        """
+        :param el: Elevation of an observation.
+        :param az: Azimuth of an observation.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron temperature in the F layer.
+        """
         return eval_layer(
             el,
             az,
@@ -124,11 +154,16 @@ class FLayer:
 
     def refr(self, el, az, freq, troposphere=True):
         """
-        #TODO
+        :param el: Elevation of observation(s) in [deg].
+        :param az: Azimuth of observation(s) in [deg].
+        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+                     available cores. Requires `dt` to be a single datetime object.
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
-        R_E = 6378100.0
+        re = 6378100.0
         ell = Ellipsoid()
         f_heights = np.linspace(self.fbot, self.ftop, self.nflayers) * 1e3
         delta_theta = 0 * el
@@ -146,8 +181,8 @@ class FLayer:
             az, el, r_slant, *self.position, ell=ell
         )  # arrays
         # The sides of the 1st triangle
-        d_tel = R_E + self.position[2]  # Distance from Earth center to telescope
-        d_cur = R_E + f_heights[0]  # Distance from Earth center to layer
+        d_tel = re + self.position[2]  # Distance from Earth center to telescope
+        d_cur = re + f_heights[0]  # Distance from Earth center to layer
 
         # The inclination angle at the 1st interface using law of cosines [rad]
         costheta_inc = (r_slant ** 2 + d_cur ** 2 - d_tel ** 2) / (2 * r_slant * d_cur)
@@ -170,7 +205,7 @@ class FLayer:
 
         for i in range(1, self.nflayers):
             h_next = f_heights[i]
-            d_next = R_E + h_next
+            d_next = re + h_next
 
             # Angle between d_cur and r_slant
             int_angle = np.pi - theta_ref
@@ -178,7 +213,7 @@ class FLayer:
             theta_inc = np.arcsin(np.sin(int_angle) * d_cur / d_next)
 
             # Getting r2 using law of cosines
-            r_slant = srange(np.deg2rad(90 - el_cur), d_next - d_cur, R_E=R_E + d_cur)
+            r_slant = srange(np.deg2rad(90 - el_cur), d_next - d_cur, re=re + d_cur)
             # Get geodetic coordinates of point
             lat_ray, lon_ray, _ = pm.aer2geodetic(
                 az, el_cur, r_slant, lat_ray, lon_ray, f_heights[i - 1], ell=ell

@@ -1,106 +1,69 @@
+from typing import Union
+
 import numpy as np
 
 
-def srange(theta, alt, R_E=6378100.0):
+def srange(
+    theta: Union[float, np.ndarray], alt: float, re: float = 6378100
+) -> Union[float, np.ndarray]:
     """
-    Calculates the distance in meters from the telescope to the point (theta, alt).
-
-    Parameters
-    ----------
-    theta : float | np.ndarray
-        Zenith angle in radians
-    alt : float
-        Altitude in meters
-    R_E : float, optional
-        Radius of the Earth in meters
-
-    Returns
-    -------
-    r : float
-        Range in meters
+    :param theta: Zenith angle in radians.
+    :param alt: Altitude in meters.
+    :param re: Radius of the Earth in meters.
+    :return: Distance in meters from the telescope to the point (theta, alt)
     """
-    r = -R_E * np.cos(theta) + np.sqrt(
-        (R_E * np.cos(theta)) ** 2 + alt**2 + 2 * alt * R_E
+    r = -re * np.cos(theta) + np.sqrt(
+        (re * np.cos(theta)) ** 2 + alt**2 + 2 * alt * re
     )
     return r
 
 
-def nu_p(n_e):
+def nu_p(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
-    Plasma frequency of cold electrons
-
-    Parameters
-    ----------
-    n_e : float | np.ndarray
-        Electron density
-
-    Returns
-    -------
-    float
-        Plasma frequency in Hz
+    :param n_e: Electron density in [m^-3].
+    :return: Plasma frequency of cold electrons in Hz.
     """
     e = 1.60217662e-19
     m_e = 9.10938356e-31
     epsilon0 = 8.85418782e-12
     if np.min(n_e) < 0:
         raise ValueError(
-            "Number density cannot be < 0. Most probably iri2016 does not include data for the specified date."
+            "Number density cannot be < 0. Most probably iricore does not include data for the specified date. Please "
+            "update the library by calling iricore.update()."
         )
     return 1 / (2 * np.pi) * np.sqrt((n_e * e**2) / (m_e * epsilon0))
 
 
-def n_f(n_e, freq):
+def n_f(n_e: Union[float, np.ndarray], freq: float):
     """
-    Refractive index of F-layer from electron density
 
-    Parameters
-    ----------
-    n_e : float | np.ndarray
-        Electron density
-    freq : float
-        Signal frequency in Hz
+    :param n_e: Electron density in [m^-3].
+    :param freq: Observational frequency in [Hz].
+    :return: Refractive index of the ionosphere from electron density.
     """
     return (1 - (nu_p(n_e) / freq) ** 2) ** 0.5
 
 
-def refr_angle(n1, n2, phi):
+def refr_angle(
+    n1: Union[float, np.ndarray],
+    n2: Union[float, np.ndarray],
+    phi: Union[float, np.ndarray],
+) -> Union[float, np.ndarray]:
     """
-    Angle of refracted ray using Snell's law.
+    Snell's law.
 
-    Parameters
-    ----------
-    n1 : float | np.ndarray
-        Refractive index in previous medium
-    n2 : float | np.ndarray
-        Refractive index in current medium
-    phi : float | np.ndarray
-        Angle of incident ray in rad
-
-    Returns
-    -------
-    float
-        Angle in rad
+    :param n1: Refractive index in previous medium.
+    :param n2: Refractive index in current medium.
+    :param phi: Angle of incident ray in [rad].
+    :return: Outcoming angle in [rad].
     """
     return np.arcsin(n1 / n2 * np.sin(phi))
 
 
-def trop_refr(theta):
+def trop_refr(theta: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
-    Calculates the tropospheric refraction (delta theta).
-
-    Parameters
-    ----------
-    theta : float | array_like
-        Zenith angle in radians
-
-    Returns
-    -------
-    dtheta : float | array_like
-        Change of the angle theta due to tropospheric refraction (in radians).
-
-    Notes
-    -----
-
+    :param theta: Zenith angle in radians.
+    :return: Change of the angle theta due to tropospheric refraction (in radians).
     """
     a = 16709.51
     b = -19066.21
@@ -108,38 +71,47 @@ def trop_refr(theta):
     return 1 / (a + b * theta + c * theta**2)
 
 
-def _d_atten_low(freq, theta, h_d, delta_hd, nu_p, nu_c):
-    R_E = 6378100
+def _d_atten_low(freq, theta, h_d, delta_hd, freq_p, freq_c):
+    re = 6378100
     c = 2.99792458e8
     delta_s = (
-        delta_hd * (1 + h_d / R_E) * (np.cos(theta) ** 2 + 2 * h_d / R_E) ** (-0.5)
+        delta_hd * (1 + h_d / re) * (np.cos(theta) ** 2 + 2 * h_d / re) ** (-0.5)
     )
     datten = np.exp(
-        -(2 * np.pi * nu_p**2 * nu_c * delta_s) / (c * (nu_c**2 + freq**2))
+        -(2 * np.pi * freq_p ** 2 * freq_c * delta_s) / (c * (freq_c ** 2 + freq ** 2))
     )
     return datten
 
 
-def _d_atten_high(freq, theta, h_d, delta_hd, nu_p, nu_c):
+def _d_atten_high(freq, theta, h_d, delta_hd, freq_p, freq_c):
     itheta = np.deg2rad(np.linspace(70, 85, 50))
-    iatten = _d_atten_low(freq, itheta, h_d, delta_hd, nu_p, nu_c)
+    iatten = _d_atten_low(freq, itheta, h_d, delta_hd, freq_p, freq_c)
     deg = 2
     pol = np.poly1d(np.polyfit(itheta, iatten, deg))
     return pol(theta)
 
 
-def d_atten(freq, theta, h_d, delta_hd, nu_p, nu_c):
+def d_atten(
+    freq: float,
+    theta: Union[float, np.ndarray],
+    h_d: float,
+    delta_hd: float,
+    freq_p: float,
+    freq_c: float,
+) -> Union[float, np.ndarray]:
     """
-    Calculates the attenuation factor from frequency of the signal [Hz], angle [rad],
-    altitude of the D-layer midpoint [km], thickness of the D-layer [km], plasma frequency [Hz],
-    and electron collision frequency [Hz]. Output is the attenuation factor between 0 (total attenuation)
-    and 1 (no attenuation).
+
+    :param freq: Frequensy of observation in [Hz].
+    :param theta: Zenith angle in [rad].
+    :param h_d: Altitude of the D-layer midpoint in [km].
+    :param delta_hd: Thickness of the D-layer in [km].
+    :param freq_p: Plasma frequency in [Hz].
+    :param freq_c: Electron collision frequency in [Hz].
+    :return: Attenuation factor between 0 (total attenuation) and 1 (no attenuation).
     """
-    R_E = 6378100
-    c = 2.99792458e8
     if theta < 80:
-        return _d_atten_low(freq, theta, h_d, delta_hd, nu_p, nu_c)
-    return _d_atten_high(freq, theta, h_d, delta_hd, nu_p, nu_c)
+        return _d_atten_low(freq, theta, h_d, delta_hd, freq_p, freq_c)
+    return _d_atten_high(freq, theta, h_d, delta_hd, freq_p, freq_c)
 
 
 d_atten = np.vectorize(d_atten)

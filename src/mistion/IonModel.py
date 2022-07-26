@@ -7,6 +7,7 @@ from multiprocessing import Pool, cpu_count
 from typing import Tuple, Union, List, Callable
 
 import numpy as np
+from numpy import ndarray
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
@@ -361,10 +362,10 @@ class IonModel:
             az: Union[float, np.ndarray],
             dt: Union[datetime, List[datetime], np.ndarray],
             freq: Union[float, np.ndarray],
-            col_freq="default",
-            troposphere=True,
-            _pbar_desc=None,
-    ):
+            col_freq: str = "default",
+            troposphere: bool = True,
+            _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -377,8 +378,7 @@ class IonModel:
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
-                 attenuation factor between 0
-        (total attenuation) and 1 (no attenuation).
+                 attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
         if is_iterable(freq) and not is_iterable(dt):
             model = self.at(dt)
@@ -404,9 +404,9 @@ class IonModel:
             az: Union[float, np.ndarray],
             dt: Union[datetime, List[datetime], np.ndarray],
             freq: Union[float, np.ndarray],
-            troposphere=True,
-            _pbar_desc=None,
-    ):
+            troposphere: bool = True,
+            _pbar_desc: Union[str, None] = None,
+    ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -434,7 +434,7 @@ class IonModel:
         """
         return IonFrame.troprefr(el)
 
-    def _nframes2dts(self, nframes: Union[int, None]) -> List[datetime]:
+    def _nframes2dts(self, nframes: Union[int, None]) -> ndarray[datetime]:
         """
         Returns a list of datetimes for animation based on specified number of frames (fps * duration).
         """
