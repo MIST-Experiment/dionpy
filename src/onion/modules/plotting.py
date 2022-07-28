@@ -40,7 +40,7 @@ def polar_plot(
 ):
     """
     A core function for graphic generation on the visible sky field.
-    See all available option listed in mistion.plot_kwargs.
+    See all available option listed in onion.plot_kwargs.
 
     :return: A matplotlib figure.
     """

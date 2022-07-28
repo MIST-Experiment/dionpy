@@ -125,10 +125,10 @@ class IonModel:
         meta.attrs["mph"] = self.mph
         meta.attrs["dbot"] = self.dbot
         meta.attrs["dtop"] = self.dtop
-        meta.attrs["ndlayers"] = self.ndlayers
-        meta.attrs["fbot"] = self.fbot
-        meta.attrs["ftop"] = self.ftop
-        meta.attrs["nflayers"] = self.nflayers
+        meta.attrs["nlayers"] = self.ndlayers
+        meta.attrs["hbot"] = self.fbot
+        meta.attrs["htop"] = self.ftop
+        meta.attrs["nlayers"] = self.nflayers
 
         for model in self.models:
             model.write_self_to_file(file)
@@ -168,10 +168,10 @@ class IonModel:
                 mph=meta.attrs["mph"],
                 dbot=meta.attrs["dbot"],
                 dtop=meta.attrs["dtop"],
-                ndlayers=meta.attrs["ndlayers"],
-                fbot=meta.attrs["fbot"],
-                ftop=meta.attrs["ftop"],
-                nflayers=meta.attrs["nflayers"],
+                ndlayers=meta.attrs["nlayers"],
+                fbot=meta.attrs["hbot"],
+                ftop=meta.attrs["htop"],
+                nflayers=meta.attrs["nlayers"],
             )
             for group in groups:
                 grp = file[group]
@@ -326,16 +326,16 @@ class IonModel:
             return obj
         else:
             idx = self._lr_ind(dt)
-            obj.dlayer.d_e_density = interp_val(
-                self.models[idx[0]].dlayer.d_e_density,
-                self.models[idx[1]].dlayer.d_e_density,
+            obj.dlayer.edens = interp_val(
+                self.models[idx[0]].dlayer.edens,
+                self.models[idx[1]].dlayer.edens,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
             )
-            obj.dlayer.d_e_temp = interp_val(
-                self.models[idx[0]].dlayer.d_e_temp,
-                self.models[idx[1]].dlayer.d_e_temp,
+            obj.dlayer.etemp = interp_val(
+                self.models[idx[0]].dlayer.etemp,
+                self.models[idx[1]].dlayer.etemp,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
@@ -434,7 +434,7 @@ class IonModel:
         """
         return IonFrame.troprefr(el)
 
-    def _nframes2dts(self, nframes: Union[int, None]) -> ndarray[datetime]:
+    def _nframes2dts(self, nframes: Union[int, None]) -> ndarray:
         """
         Returns a list of datetimes for animation based on specified number of frames (fps * duration).
         """
@@ -526,7 +526,7 @@ class IonModel:
 
         :param name: Name of file.
         :param freq: Frequency of observation.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         self._time_animation(
             self.atten,
@@ -543,7 +543,7 @@ class IonModel:
         :param name: Name of file.
         :param freq: Frequency of observation.
         :param cmap: Matplotlib colormap to use in plot.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         barlabel = r"$deg$"
         self._time_animation(
@@ -561,7 +561,7 @@ class IonModel:
         Generates an animation of change of electron temperature in the D layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
@@ -577,7 +577,7 @@ class IonModel:
         Generates an animation of change of electron density in the D layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(
@@ -593,7 +593,7 @@ class IonModel:
         Generates an animation of change of electron density in the F layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
@@ -609,7 +609,7 @@ class IonModel:
         Generates an animation of change of electron temperature in the F layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `mistion.plot_kwargs`.
+        :param kwargs: See `onion.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(

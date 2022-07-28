@@ -24,7 +24,6 @@ class IonFrame:
     Ionosphere (IRI) model. The calculated model can estimate ionospheric attenuation and refraction
     in a given direction defined by elevation and azimuth angles.
 
-
     :param dt: Date/time of the model.
     :param position: Geographical position of an observer. Must be a tuple containing
                      latitude [deg], longitude [deg], and elevation [m].
@@ -140,22 +139,22 @@ class IonFrame:
         meta.attrs["dt"] = self.dt.strftime("%Y-%m-%d %H:%M")
         meta.attrs["nside"] = self.nside
 
-        meta.attrs["ndlayers"] = self.dlayer.ndlayers
-        meta.attrs["dtop"] = self.dlayer.dtop
-        meta.attrs["dbot"] = self.dlayer.dbot
+        meta.attrs["ndlayers"] = self.dlayer.nlayers
+        meta.attrs["dtop"] = self.dlayer.htop
+        meta.attrs["dbot"] = self.dlayer.hbot
 
-        meta.attrs["nflayers"] = self.flayer.nflayers
-        meta.attrs["fbot"] = self.flayer.fbot
-        meta.attrs["ftop"] = self.flayer.ftop
+        meta.attrs["nflayers"] = self.flayer.nlayers
+        meta.attrs["fbot"] = self.flayer.hbot
+        meta.attrs["ftop"] = self.flayer.htop
 
         if (
-            np.average(self.dlayer.d_e_density) > 0
-            and np.average(self.flayer.f_e_density) > 0
+            np.average(self.dlayer.edens) > 0
+            and np.average(self.flayer.edens) > 0
         ):
-            grp.create_dataset("d_e_density", data=self.dlayer.d_e_density)
-            grp.create_dataset("d_e_temp", data=self.dlayer.d_e_temp)
-            grp.create_dataset("f_e_density", data=self.flayer.f_e_density)
-            grp.create_dataset("f_e_temp", data=self.flayer.f_e_temp)
+            grp.create_dataset("dedens", data=self.dlayer.edens)
+            grp.create_dataset("detemp", data=self.dlayer.etemp)
+            grp.create_dataset("fedens", data=self.flayer.edens)
+            grp.create_dataset("fetemp", data=self.flayer.etemp)
 
     def save(self, savedir=None, name=None):
         import h5py
@@ -188,11 +187,11 @@ class IonFrame:
             ftop=meta.attrs["ftop"],
             nflayers=meta.attrs["nflayers"],
         )
-        obj.dlayer.d_e_density = none_or_array(grp.get("d_e_density"))
-        obj.dlayer.d_e_temp = none_or_array(grp.get("d_e_temp"))
+        obj.dlayer.edens = none_or_array(grp.get("dedens"))
+        obj.dlayer.etemp = none_or_array(grp.get("detemp"))
 
-        obj.flayer.f_e_density = none_or_array(grp.get("f_e_density"))
-        obj.flayer.f_e_temp = none_or_array(grp.get("f_e_temp"))
+        obj.flayer.edens = none_or_array(grp.get("fedens"))
+        obj.flayer.etemp = none_or_array(grp.get("fetemp"))
         return obj
 
     @classmethod
@@ -216,7 +215,7 @@ class IonFrame:
     def plot_ded(self, gridsize=200, layer=None, **kwargs):
         barlabel = r"$m^{-3}$"
         el, az = elaz_mesh(gridsize)
-        ded = self.dlayer.ded(el, az, layer)
+        ded = self.dlayer.ed(el, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - el, ded),
             dt=self.dt,
@@ -228,7 +227,7 @@ class IonFrame:
     def plot_det(self, gridsize=200, layer=None, **kwargs):
         barlabel = r"$K^\circ$"
         el, az = elaz_mesh(gridsize)
-        det = self.dlayer.det(el, az, layer)
+        det = self.dlayer.et(el, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - el, det),
             dt=self.dt,
@@ -240,7 +239,7 @@ class IonFrame:
     def plot_fed(self, gridsize=200, layer=None, **kwargs):
         barlabel = r"$m^{-3}$"
         el, az = elaz_mesh(gridsize)
-        fed = self.flayer.fed(el, az, layer)
+        fed = self.flayer.ed(el, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - el, fed),
             dt=self.dt,
@@ -252,7 +251,7 @@ class IonFrame:
     def plot_fet(self, gridsize=200, layer=None, **kwargs):
         barlabel = r"$K^\circ$"
         el, az = elaz_mesh(gridsize)
-        fet = self.flayer.fet(el, az, layer)
+        fet = self.flayer.et(el, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - el, fet),
             dt=self.dt,
