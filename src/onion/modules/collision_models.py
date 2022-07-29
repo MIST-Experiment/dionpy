@@ -1,7 +1,7 @@
+import os
 from typing import Union
 
 import numpy as np
-import os
 from scipy.interpolate import interp1d
 
 
