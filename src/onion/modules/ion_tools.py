@@ -3,13 +3,14 @@ from typing import Union
 import numpy as np
 
 
+
 def srange(
     theta: Union[float, np.ndarray], alt: float, re: float = 6378100
 ) -> Union[float, np.ndarray]:
     """
-    :param theta: Zenith angle in radians.
-    :param alt: Altitude in meters.
-    :param re: Radius of the Earth in meters.
+    :param theta: Zenith angle in [rad].
+    :param alt: Altitude in [m].
+    :param re: Radius of the Earth in [m].
     :return: Distance in meters from the telescope to the point (theta, alt)
     """
     r = -re * np.cos(theta) + np.sqrt(
@@ -18,7 +19,7 @@ def srange(
     return r
 
 
-def nu_p(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def plasfreq(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """
     :param n_e: Electron density in [m^-3].
     :return: Plasma frequency of cold electrons in Hz.
@@ -34,14 +35,14 @@ def nu_p(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return 1 / (2 * np.pi) * np.sqrt((n_e * e**2) / (m_e * epsilon0))
 
 
-def n_f(n_e: Union[float, np.ndarray], freq: float):
+def refr_index(n_e: Union[float, np.ndarray], freq: float):
     """
 
     :param n_e: Electron density in [m^-3].
     :param freq: Observational frequency in [Hz].
     :return: Refractive index of the ionosphere from electron density.
     """
-    return (1 - (nu_p(n_e) / freq) ** 2) ** 0.5
+    return (1 - (plasfreq(n_e) / freq) ** 2) ** 0.5
 
 
 def refr_angle(

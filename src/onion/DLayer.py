@@ -6,7 +6,7 @@ import numpy as np
 from .IonLayer import IonLayer
 from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 from .modules.helpers import check_elaz_shape
-from .modules.ion_tools import d_atten, trop_refr, nu_p
+from .modules.ion_tools import d_atten, trop_refr, plasfreq, srange
 
 
 class DLayer(IonLayer):
@@ -25,15 +25,15 @@ class DLayer(IonLayer):
     """
 
     def __init__(
-        self,
-        dt: datetime,
-        position: Tuple[float, float, float],
-        hbot: float = 60,
-        htop: float = 90,
-        nlayers: int = 10,
-        nside: int = 128,
-        pbar: bool = True,
-        _autocalc: bool = True,
+            self,
+            dt: datetime,
+            position: Tuple[float, float, float],
+            hbot: float = 60,
+            htop: float = 90,
+            nlayers: int = 10,
+            nside: int = 128,
+            pbar: bool = True,
+            _autocalc: bool = True,
     ):
         super().__init__(
             dt,
@@ -49,12 +49,12 @@ class DLayer(IonLayer):
         )
 
     def atten(
-        self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        freq: Union[float, np.ndarray],
-        col_freq: str = "default",
-        troposphere: bool = True,
+            self,
+            el: Union[float, np.ndarray],
+            az: Union[float, np.ndarray],
+            freq: Union[float, np.ndarray],
+            col_freq: str = "default",
+            troposphere: bool = True,
     ) -> Union[float, np.ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -70,9 +70,7 @@ class DLayer(IonLayer):
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
         atten = np.empty((*el.shape, self.nlayers))
-
-        h_d = self.hbot + (self.htop - self.hbot) / 2
-        delta_h_d = self.htop - self.hbot
+        dh = (self.htop - self.hbot) / self.nlayers * 1e3
 
         if col_freq == "default" or "aggrawal":
             col_model = col_aggarwal
@@ -83,7 +81,7 @@ class DLayer(IonLayer):
         else:
             col_model = lambda h: np.float64(col_freq)
 
-        heights = np.linspace(self.hbot, self.htop, self.nlayers)
+        heights_km = np.linspace(self.hbot, self.htop, self.nlayers)
 
         theta = np.deg2rad(90 - el)
         if troposphere:
@@ -91,14 +89,17 @@ class DLayer(IonLayer):
             theta += dtheta
             el -= np.rad2deg(dtheta)
 
+        c = 2.99792458e8  # speed of light
+
         for i in range(self.nlayers):
-            nu_c = col_model(heights[i])
+            freq_c = col_model(heights_km[i])
             ded = self.ed(el, az, layer=i)
-            plasma_freq = nu_p(ded)
-            atten[:, :, i] = d_atten(
-                freq, theta, h_d * 1e3, delta_h_d * 1e3, plasma_freq, nu_c
-            )
-        atten = atten.mean(axis=2)
+            freq_p = plasfreq(ded)
+            ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
+            atten[:, :, i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
+        # atten = 1 + atten.sum(axis=2) - self.nlayers
+        atten = atten.prod(axis=2)
+
         if atten.size == 1:
             return atten[0, 0]
         return atten

@@ -1,26 +1,26 @@
 Reference
 =========
 
-mistion.IonFrame
+onion.IonFrame
 ----------------
-.. autoclass:: mistion.IonFrame
-.. automethod:: mistion.IonFrame.atten
+.. autoclass:: onion.IonFrame
+.. automethod:: onion.IonFrame.atten
 
-mistion.IonModel
+onion.IonModel
 ----------------
-.. autoclass:: mistion.IonModel
-.. automethod:: mistion.IonModel.save
-.. automethod:: mistion.IonModel.load
-.. automethod:: mistion.IonModel.at
-.. automethod:: mistion.IonModel.atten
-.. automethod:: mistion.IonModel.refr
-.. automethod:: mistion.IonModel.ded
-.. automethod:: mistion.IonModel.det
-.. automethod:: mistion.IonModel.fed
-.. automethod:: mistion.IonModel.fet
-.. automethod:: mistion.IonModel.animate_atten_vs_time
-.. automethod:: mistion.IonModel.animate_refr_vs_time
-.. automethod:: mistion.IonModel.animate_ded_vs_time
-.. automethod:: mistion.IonModel.animate_det_vs_time
-.. automethod:: mistion.IonModel.animate_fed_vs_time
-.. automethod:: mistion.IonModel.animate_fet_vs_time
+.. autoclass:: onion.IonModel
+.. automethod:: onion.IonModel.save
+.. automethod:: onion.IonModel.load
+.. automethod:: onion.IonModel.at
+.. automethod:: onion.IonModel.atten
+.. automethod:: onion.IonModel.refr
+.. automethod:: onion.IonModel.ded
+.. automethod:: onion.IonModel.det
+.. automethod:: onion.IonModel.fed
+.. automethod:: onion.IonModel.fet
+.. automethod:: onion.IonModel.animate_atten_vs_time
+.. automethod:: onion.IonModel.animate_refr_vs_time
+.. automethod:: onion.IonModel.animate_ded_vs_time
+.. automethod:: onion.IonModel.animate_det_vs_time
+.. automethod:: onion.IonModel.animate_fed_vs_time
+.. automethod:: onion.IonModel.animate_fet_vs_time

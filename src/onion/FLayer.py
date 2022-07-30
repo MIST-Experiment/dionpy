@@ -6,7 +6,7 @@ import pymap3d as pm
 
 from .IonLayer import IonLayer
 from .modules.helpers import Ellipsoid, check_elaz_shape
-from .modules.ion_tools import srange, n_f, refr_angle, trop_refr
+from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr
 
 
 class FLayer(IonLayer):
@@ -92,7 +92,7 @@ class FLayer(IonLayer):
         fed = self.ed(el, az, layer=0)
 
         # Refraction index of 1st point
-        n_next = n_f(fed, freq)
+        n_next = refr_index(fed, freq)
         # The outgoing angle at the 1st interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
         delta_theta += theta_ref - theta_inc
@@ -118,7 +118,7 @@ class FLayer(IonLayer):
             fed = self.ed(el, az, layer=i)
 
             # Refractive indices
-            n_next = n_f(fed, freq)
+            n_next = refr_index(fed, freq)
 
             # The outgoing angle at the 2nd interface using Snell's law
             theta_ref = refr_angle(n_cur, n_next, theta_inc)

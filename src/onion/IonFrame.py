@@ -263,9 +263,10 @@ class IonFrame:
     def plot_atten(self, freq, troposphere=True, gridsize=200, **kwargs):
         el, az = elaz_mesh(gridsize)
         atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
-        barlabel = None
+        atten_db = 20 * np.log10(atten)
+        barlabel = r"dB"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, atten),
+            (np.deg2rad(az), 90 - el, atten_db),
             dt=self.dt,
             pos=self.position,
             freq=freq,
