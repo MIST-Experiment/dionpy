@@ -25,7 +25,6 @@ scipy = [
     {version = "^1.8", python = "^3.8"},
 ]
 matplotlib = "^3.5.2"
-mpi4py = "^3.1.3"
 pytz = "^2022.1"
 it = "^1.0.0"
 jupyter = "^1.0.0"

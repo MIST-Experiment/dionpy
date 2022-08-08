@@ -4,7 +4,6 @@ pymap3d
 tqdm
 scipy
 matplotlib
-mpi4py
 pytz
 it
 jupyter
