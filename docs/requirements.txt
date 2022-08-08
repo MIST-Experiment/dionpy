@@ -12,3 +12,4 @@ ffmpeg-progress-yield
 iricore
 sphinx-rtd-theme
 sphinx-autodoc-typehints
+sphinx>=5.0.2
