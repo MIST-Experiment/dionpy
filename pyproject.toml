@@ -17,7 +17,6 @@ numpy = [
     {version = "^1.21", python = "~3.7"},
     {version = "^1.22", python = "^3.8"},
 ]
-iricore = {git = "https://github.com/lap1dem/iricore"}
 h5py = "^3.6.0"
 pymap3d = "^2.8.0"
 tqdm = "^4.64.0"
@@ -32,6 +31,7 @@ it = "^1.0.0"
 jupyter = "^1.0.0"
 healpy = "^1.15.2"
 ffmpeg-progress-yield = "^0.2.0"
+iricore = "^1.0.5"
 
 
 [tool.poetry.dev-dependencies]
