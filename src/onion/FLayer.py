@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 import pymap3d as pm
@@ -48,7 +50,13 @@ class FLayer(IonLayer):
             name="F layer",
         )
 
-    def refr(self, el, az, freq, troposphere=True):
+    def refr(
+        self,
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        freq: float | List | np.ndarray,
+        troposphere: bool = True,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].

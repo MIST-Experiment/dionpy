@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import itertools
 import os
 import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Union
+from typing import Tuple, Callable
 
+import h5py
 import numpy as np
 from tqdm import tqdm
 
@@ -76,7 +79,7 @@ class IonFrame:
             return calc_refatt(func, el, az, freq, **kwargs)
 
     @staticmethod
-    def troprefr(el: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def troprefr(el: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
         https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
@@ -86,11 +89,18 @@ class IonFrame:
         """
         return np.rad2deg(trop_refr(np.deg2rad(90 - el)))
 
-    def refr(self, el, az, freq, troposphere=True, _pbar_desc=None):
+    def refr(
+        self,
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        freq: float | np.ndarray,
+        troposphere: bool = True,
+        _pbar_desc: str | None = None,
+    ):
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
-        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on all
                      available cores. Requires `dt` to be a single datetime object.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
@@ -102,13 +112,13 @@ class IonFrame:
 
     def atten(
         self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        freq: Union[float, np.ndarray],
-        _pbar_desc: Union[str, None] = None,
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        freq: float | np.ndarray,
+        _pbar_desc: str | None = None,
         col_freq: str = "default",
         troposphere: bool = True,
-    ) -> Union[float, np.ndarray]:
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -131,7 +141,7 @@ class IonFrame:
             troposphere=troposphere,
         )
 
-    def write_self_to_file(self, file):
+    def write_self_to_file(self, file: h5py.File):
         h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
         grp = file.create_group(h5dir)
         meta = grp.create_dataset("meta", shape=(0,))
@@ -147,22 +157,22 @@ class IonFrame:
         meta.attrs["fbot"] = self.flayer.hbot
         meta.attrs["ftop"] = self.flayer.htop
 
-        if (
-            np.average(self.dlayer.edens) > 0
-            and np.average(self.flayer.edens) > 0
-        ):
+        if np.average(self.dlayer.edens) > 0 and np.average(self.flayer.edens) > 0:
             grp.create_dataset("dedens", data=self.dlayer.edens)
             grp.create_dataset("detemp", data=self.dlayer.etemp)
             grp.create_dataset("fedens", data=self.flayer.edens)
             grp.create_dataset("fetemp", data=self.flayer.etemp)
 
-    def save(self, savedir=None, name=None):
-        import h5py
+    def save(self, savedir: str = "ion_models/", name: str | None = None):
+        """
+        Save the model to HDF file.
 
-        filename = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
-        savedir = savedir or "ion_models/"
+        :param savedir: Path to directory.
+        :param name: Name of the file. If None - the name is created automatically as
+                     "year[04]month[02]day[02]hour[042]minute[02]".
+        """
         os.makedirs(savedir, exist_ok=True)
-
+        filename = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
         name = name or filename
         name = os.path.join(savedir, name)
         if not name.endswith(".h5"):
@@ -173,7 +183,7 @@ class IonFrame:
         file.close()
 
     @classmethod
-    def read_self_from_file(cls, grp):
+    def read_self_from_file(cls, grp: h5py.Group):
         meta = grp.get("meta")
         obj = cls(
             _autocalc=False,
@@ -196,8 +206,12 @@ class IonFrame:
 
     @classmethod
     def load(cls, path: str):
-        import h5py
+        """
+        Load a model from file.
 
+        :param path: Path to a file (file extension is not required).
+        :return: :class:`IonModel` recovered from a file.
+        """
         if not path.endswith(".h5"):
             path += ".h5"
         with h5py.File(path, mode="r") as file:
@@ -212,7 +226,15 @@ class IonFrame:
             obj = cls.read_self_from_file(grp)
         return obj
 
-    def plot_ded(self, gridsize=200, layer=None, **kwargs):
+    def plot_ded(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+        """
+        Visualize electron density in the D layer.
+
+        :param gridsize: Grid resolution of the plot.
+        :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         barlabel = r"$m^{-3}$"
         el, az = elaz_mesh(gridsize)
         ded = self.dlayer.ed(el, az, layer)
@@ -224,7 +246,15 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_det(self, gridsize=200, layer=None, **kwargs):
+    def plot_det(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+        """
+        Visualize electron temperature in the D layer.
+
+        :param gridsize: Grid resolution of the plot.
+        :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         barlabel = r"$K^\circ$"
         el, az = elaz_mesh(gridsize)
         det = self.dlayer.et(el, az, layer)
@@ -236,7 +266,15 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_fed(self, gridsize=200, layer=None, **kwargs):
+    def plot_fed(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+        """
+        Visualize electron density in the F layer.
+
+        :param gridsize: Grid resolution of the plot.
+        :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         barlabel = r"$m^{-3}$"
         el, az = elaz_mesh(gridsize)
         fed = self.flayer.ed(el, az, layer)
@@ -248,7 +286,15 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_fet(self, gridsize=200, layer=None, **kwargs):
+    def plot_fet(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+        """
+        Visualize electron temperature in the F layer.
+
+        :param gridsize: Grid resolution of the plot.
+        :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         barlabel = r"$K^\circ$"
         el, az = elaz_mesh(gridsize)
         fet = self.flayer.et(el, az, layer)
@@ -260,7 +306,18 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_atten(self, freq, troposphere=True, gridsize=200, **kwargs):
+    def plot_atten(
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, **kwargs
+    ):
+        """
+        Visualize ionospheric attenuation.
+
+        :param freq: Frequency of observation in [Hz].
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param gridsize: Grid resolution of the plot.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         el, az = elaz_mesh(gridsize)
         atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
         atten_db = 20 * np.log10(atten)
@@ -275,8 +332,23 @@ class IonFrame:
         )
 
     def plot_refr(
-        self, freq, troposphere=True, gridsize=200, cmap="viridis_r", **kwargs
+        self,
+        freq: float,
+        troposphere: bool = True,
+        gridsize: int = 200,
+        cmap: str = "viridis_r",
+        **kwargs,
     ):
+        """
+        Visualize ionospheric refraction.
+
+        :param freq: Frequency of observation in [Hz].
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
@@ -291,6 +363,14 @@ class IonFrame:
         )
 
     def plot_troprefr(self, gridsize=200, cmap="viridis_r", **kwargs):
+        """
+        Visualize tropospheric refraction.
+
+        :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param kwargs: See `onion.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
         el, az = elaz_mesh(gridsize)
         troprefr = self.troprefr(el)
         barlabel = r"$deg$"
@@ -305,20 +385,20 @@ class IonFrame:
 
     def _freq_animation(
         self,
-        func,
-        name,
-        freqrange=(45e6, 125e6),
-        gridsize=100,
-        fps=20,
-        duration=5,
-        savedir="animations/",
-        title=None,
-        barlabel=None,
-        plotlabel=None,
-        dpi=300,
-        cmap="viridis",
-        cbformat="%.2f",
-        pbar_label="",
+        func: Callable,
+        name: str,
+        freqrange: Tuple[float, float] = (45e6, 125e6),
+        gridsize: int = 200,
+        fps: int = 20,
+        duration: int = 5,
+        savedir: str = "animations/",
+        title: str | None = None,
+        barlabel: str | None = None,
+        plotlabel: str | None = None,
+        dpi: int = 300,
+        cmap: str = "viridis",
+        cbformat: str = "%.2f",
+        pbar_label: str = "",
     ):
         print(
             TextColor.BOLD
@@ -369,19 +449,60 @@ class IonFrame:
         shutil.rmtree(tmpdir)
         return
 
-    def animate_atten_vs_freq(self, name, **kwargs):
+    def animate_atten_vs_freq(
+        self,
+        name: str,
+        freqrange: Tuple[float, float] = (45e6, 125e6),
+        fps: int = 20,
+        duration: int = 5,
+        **kwargs,
+    ):
+        """
+        Generates an animation of attenuation change with frequency.
+
+        :param name: Name of file.
+        :param freqrange: Frequency range of animation.
+        :param fps: Frames per second.
+        :param duration: Duration of animation in [s].
+        :param cmap: Matplotlib colormap to use in plot.
+        :param kwargs: See `onion.plot_kwargs`.
+        """
         self._freq_animation(
             self.atten,
             name,
+            freqrange=freqrange,
+            fps=fps,
+            duration=duration,
             pbar_label="D layer attenuation",
             cbformat="%.3f",
             **kwargs,
         )
 
-    def animate_refr_vs_freq(self, name, cmap="viridis_r", **kwargs):
+    def animate_refr_vs_freq(
+        self,
+        name,
+        freqrange: Tuple[float, float] = (45e6, 125e6),
+        fps: int = 20,
+        duration: int = 5,
+        cmap="viridis_r",
+        **kwargs,
+    ):
+        """
+        Generates an animation of refraction angle change with frequency.
+
+        :param name: Name of file.
+        :param freqrange: Frequency range of animation.
+        :param fps: Frames per second.
+        :param duration: Duration of animation in [s].
+        :param cmap: Matplotlib colormap to use in plot.
+        :param kwargs: See `onion.plot_kwargs`.
+        """
         self._freq_animation(
             self.refr,
             name,
+            freqrange=freqrange,
+            fps=fps,
+            duration=duration,
             pbar_label="F layer refraction",
             barlabel=r"deg",
             cmap=cmap,

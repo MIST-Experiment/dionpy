@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Union, Tuple
+from typing import Tuple
 
 import numpy as np
 
 from .IonLayer import IonLayer
 from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 from .modules.helpers import check_elaz_shape
-from .modules.ion_tools import d_atten, trop_refr, plasfreq, srange
+from .modules.ion_tools import trop_refr, plasfreq, srange
 
 
 class DLayer(IonLayer):
@@ -50,12 +52,12 @@ class DLayer(IonLayer):
 
     def atten(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            freq: Union[float, np.ndarray],
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            freq: float | np.ndarray,
             col_freq: str = "default",
             troposphere: bool = True,
-    ) -> Union[float, np.ndarray]:
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].

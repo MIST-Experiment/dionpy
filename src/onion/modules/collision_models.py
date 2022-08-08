@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 import os
-from typing import Union
 
 import numpy as np
 from scipy.interpolate import interp1d
 
 
-def col_nicolet(h: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def col_nicolet(h: float | np.ndarray) -> float | np.ndarray:
     """
     Ionosphere collision model from [Nicolet, M. 1953, JATP, 3, 200].
 
@@ -17,7 +18,7 @@ def col_nicolet(h: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return np.exp(a * h + b)
 
 
-def col_setty(h: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def col_setty(h: float | np.ndarray) -> float | np.ndarray:
     """
     Ionosphere collision model from [Setty, C. S. G. K. 1972, IJRSP, 1, 38].
 
@@ -36,7 +37,7 @@ _NUC_AGG, _HEI_AGG = np.genfromtxt(
 _MODEL_AGG = interp1d(_HEI_AGG, _NUC_AGG)
 
 
-def col_aggarwal(h: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def col_aggarwal(h: float | np.ndarray) -> float | np.ndarray:
     """
     Collision frequency model by (Aggrawal 1979). For details see
     https://ui.adsabs.harvard.edu/abs/1979P%26SS...27..753A/abstract

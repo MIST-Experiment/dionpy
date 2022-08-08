@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import itertools
 import os
 import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import Tuple, Union, List, Callable
+from typing import Tuple, List, Callable
 
 import numpy as np
 from numpy import ndarray
@@ -196,14 +198,14 @@ class IonModel:
 
     def _parallel_calc(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime], np.ndarray],
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime] | np.ndarray,
             funcs: List[Callable],
             pbar_desc: str,
             *args,
             **kwargs,
-    ) -> Union[float, np.ndarray]:
+    ) -> float | np.ndarray:
         """
         Sends methods either to serial or parallel calculation routines based on type of dt.
         """
@@ -221,12 +223,12 @@ class IonModel:
 
     def ded(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime]],
-            layer: int = None,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
+            layer: int | None = None,
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -241,12 +243,12 @@ class IonModel:
 
     def det(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime]],
-            layer: int = None,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
+            layer: int | None = None,
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -261,12 +263,12 @@ class IonModel:
 
     def fed(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime]],
-            layer: int = None,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
+            layer: int | None = None,
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -281,12 +283,12 @@ class IonModel:
 
     def fet(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime]],
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
             layer: int = None,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -358,14 +360,14 @@ class IonModel:
 
     def atten(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime], np.ndarray],
-            freq: Union[float, np.ndarray],
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
+            freq: float | np.ndarray,
             col_freq: str = "default",
             troposphere: bool = True,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -400,13 +402,13 @@ class IonModel:
 
     def refr(
             self,
-            el: Union[float, np.ndarray],
-            az: Union[float, np.ndarray],
-            dt: Union[datetime, List[datetime], np.ndarray],
-            freq: Union[float, np.ndarray],
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            dt: datetime | List[datetime],
+            freq: float | np.ndarray,
             troposphere: bool = True,
-            _pbar_desc: Union[str, None] = None,
-    ) -> Union[float, np.ndarray]:
+            _pbar_desc: str | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -424,7 +426,7 @@ class IonModel:
         )
 
     @staticmethod
-    def troprefr(el: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    def troprefr(el: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
         https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
@@ -434,7 +436,7 @@ class IonModel:
         """
         return IonFrame.troprefr(el)
 
-    def _nframes2dts(self, nframes: Union[int, None]) -> ndarray:
+    def _nframes2dts(self, nframes: int | None) -> ndarray:
         """
         Returns a list of datetimes for animation based on specified number of frames (fps * duration).
         """
@@ -453,14 +455,14 @@ class IonModel:
             self,
             func: Callable,
             name: str,
-            freq: Union[float, None] = None,
+            freq: float | None = None,
             gridsize: int = 100,
             fps: int = 20,
             duration: int = 5,
             savedir: str = "animations/",
-            title: str = None,
-            barlabel: str = None,
-            plotlabel: str = None,
+            title: str | None = None,
+            barlabel: str | None = None,
+            plotlabel: str | None = None,
             dpi: int = 300,
             cmap: str = "viridis",
             pbar_label: str = "",

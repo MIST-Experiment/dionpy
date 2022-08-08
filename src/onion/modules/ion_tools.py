@@ -1,12 +1,12 @@
-from typing import Union
+from __future__ import annotations
 
 import numpy as np
 
 
 
 def srange(
-    theta: Union[float, np.ndarray], alt: float, re: float = 6378100
-) -> Union[float, np.ndarray]:
+    theta: float | np.ndarray, alt: float, re: float = 6378100
+) -> float | np.ndarray:
     """
     :param theta: Zenith angle in [rad].
     :param alt: Altitude in [m].
@@ -19,7 +19,7 @@ def srange(
     return r
 
 
-def plasfreq(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
     """
     :param n_e: Electron density in [m^-3].
     :return: Plasma frequency of cold electrons in Hz.
@@ -35,7 +35,7 @@ def plasfreq(n_e: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return 1 / (2 * np.pi) * np.sqrt((n_e * e**2) / (m_e * epsilon0))
 
 
-def refr_index(n_e: Union[float, np.ndarray], freq: float):
+def refr_index(n_e: float | np.ndarray, freq: float):
     """
 
     :param n_e: Electron density in [m^-3].
@@ -46,10 +46,10 @@ def refr_index(n_e: Union[float, np.ndarray], freq: float):
 
 
 def refr_angle(
-    n1: Union[float, np.ndarray],
-    n2: Union[float, np.ndarray],
-    phi: Union[float, np.ndarray],
-) -> Union[float, np.ndarray]:
+    n1: float | np.ndarray,
+    n2: float | np.ndarray,
+    phi: float | np.ndarray,
+) -> float | np.ndarray:
     """
     Snell's law.
 
@@ -61,7 +61,7 @@ def refr_angle(
     return np.arcsin(n1 / n2 * np.sin(phi))
 
 
-def trop_refr(theta: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+def trop_refr(theta: float | np.ndarray) -> float | np.ndarray:
     """
     :param theta: Zenith angle in radians.
     :return: Change of the angle theta due to tropospheric refraction (in radians).
@@ -94,12 +94,12 @@ def _d_atten_high(freq, theta, h_d, delta_hd, freq_p, freq_c):
 
 def d_atten(
     freq: float,
-    theta: Union[float, np.ndarray],
+    theta: float | np.ndarray,
     h_d: float,
     delta_hd: float,
     freq_p: float,
     freq_c: float,
-) -> Union[float, np.ndarray]:
+) -> float | np.ndarray:
     """
 
     :param freq: Frequensy of observation in [Hz].

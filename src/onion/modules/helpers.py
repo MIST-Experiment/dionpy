@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import os
-from typing import Tuple, Union, Iterable, List
+from typing import Tuple, Iterable, List
 
 import healpy as hp
 import numpy as np
@@ -41,7 +43,7 @@ class Ellipsoid(pmEllipsoid):
         self.eccentricity = 0.0
 
 
-def none_or_array(vals: Union[None, Iterable]) -> Union[np.ndarray, None]:
+def none_or_array(vals: None | Iterable) -> np.ndarray | None:
     """
     Used for data loading from HDF files. Converts not None values to np.arrays.
     """
@@ -56,7 +58,7 @@ def is_iterable(x):
     return False
 
 
-def check_elaz_shape(el, az):
+def check_elaz_shape(el: float | np.ndarray, az: float | np.ndarray):
     """
     Checks shape and type of input elevation and azimuth.
     """
@@ -71,11 +73,11 @@ def check_elaz_shape(el, az):
 
 
 def sky2ll(
-    el: Union[float, np.ndarray],
-    az: Union[float, np.ndarray],
+    el: float | np.ndarray,
+    az: float | np.ndarray,
     height: float,
     pos: Tuple[float, float, float],
-) -> [Union[float, np.ndarray], Union[float, np.ndarray]]:
+) -> [float | np.ndarray, float | np.ndarray]:
     """
     Converts visible elevation and azimuth to geographic coordinates with given height of the visible point.
 
@@ -102,16 +104,16 @@ def elaz_mesh(gridsize: int) -> [np.ndarray, np.ndarray]:
 
 
 def eval_layer(
-    el: Union[float, np.ndarray],
-    az: Union[float, np.ndarray],
+    el: float | np.ndarray,
+    az: float | np.ndarray,
     nside: int,
     position: Tuple[float, float, float],
     hbot: float,
     htop: float,
     nlayers: int,
     obs_pixels: List[int],
-    data: Union[float, np.ndarray],
-    layer: Union[int, None] = None,
+    data: float | np.ndarray,
+    layer: int | None = None,
 ):
     """
     Calculates interpolated values on healpix grid.
@@ -157,7 +159,7 @@ def pic2vid(
     vidname: str,
     savedir: str = "animations",
     fps: int = 20,
-    desc: Union[str, None] = None,
+    desc: str | None = None,
 ):
     """
     Renders existing set of pictures to mp4 video.

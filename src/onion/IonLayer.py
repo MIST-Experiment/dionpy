@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import itertools
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Union, Tuple
+from typing import Tuple
 
 import healpy as hp
 import iricore
@@ -39,7 +41,7 @@ class IonLayer:
         nside: int = 128,
         rdeg: float = 20,
         pbar: bool = True,
-        name: Union[str, None] = None,
+        name: str | None = None,
         _autocalc: bool = True,
     ):
         self.hbot = hbot
@@ -122,10 +124,10 @@ class IonLayer:
 
     def ed(
         self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        layer: int = None,
-    ) -> Union[float, np.ndarray]:
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        layer: int | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of an observation.
         :param az: Azimuth of an observation.
@@ -148,10 +150,10 @@ class IonLayer:
 
     def et(
         self,
-        el: Union[float, np.ndarray],
-        az: Union[float, np.ndarray],
-        layer: int = None,
-    ) -> Union[float, np.ndarray]:
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        layer: int | None = None,
+    ) -> float | np.ndarray:
         """
         :param el: Elevation of an observation.
         :param az: Azimuth of an observation.

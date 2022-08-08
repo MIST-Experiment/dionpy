@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 from matplotlib import colormaps
@@ -25,14 +27,14 @@ plot_kwargs = {
 
 def polar_plot(
     data: Tuple[np.ndarray, np.ndarray, np.ndarray],
-    dt: Union[datetime, None] = None,
-    pos: Union[Tuple[float, float, float], None] = None,
-    freq: Union[float, None] = None,
-    title: Union[str, None] = None,
-    barlabel: Union[str, None] = None,
-    plotlabel: Union[str, None] = None,
-    cblim: Union[Tuple[float, float], None] = None,
-    saveto: Union[str, None] = None,
+    dt: datetime | None = None,
+    pos: Tuple[float, float, float] | None = None,
+    freq: float | None = None,
+    title: str | None = None,
+    barlabel: str | None = None,
+    plotlabel: str | None = None,
+    cblim: Tuple[float, float] | None = None,
+    saveto: str | None = None,
     dpi: int = 300,
     cmap: str = "viridis",
     cbformat: str = None,

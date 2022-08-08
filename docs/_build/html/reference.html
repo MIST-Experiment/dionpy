@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reference &mdash; onion 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> onion
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#onion-ionframe">onion.IonFrame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#onion-ionmodel">onion.IonModel</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">onion</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="reference">
+<h1>Reference<a class="headerlink" href="#reference" title="Permalink to this heading"></a></h1>
+<section id="onion-ionframe">
+<h2>onion.IonFrame<a class="headerlink" href="#onion-ionframe" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="onion.IonFrame">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">onion.</span></span><span class="sig-name descname"><span class="pre">IonFrame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dbot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndlayers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fbot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">150</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ftop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nflayers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_autocalc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonFrame" title="Permalink to this definition"></a></dt>
+<dd><p>A model of the ionosphere for a specific moment in time. Given a position, calculates electron
+density and temperature in the ionosphere in all visible directions using International Reference
+Ionosphere (IRI) model. The calculated model can estimate ionospheric attenuation and refraction
+in a given direction defined by elevation and azimuth angles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code>) – Date/time of the model.</p></li>
+<li><p><strong>position</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]) – Geographical position of an observer. Must be a tuple containing
+latitude [deg], longitude [deg], and elevation [m].</p></li>
+<li><p><strong>nside</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">128</span></code>) – Resolution of healpix grid.</p></li>
+<li><p><strong>dbot</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">60</span></code>) – Lower limit in [km] of the D layer of the ionosphere.</p></li>
+<li><p><strong>dtop</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">90</span></code>) – Upper limit in [km] of the D layer of the ionosphere.</p></li>
+<li><p><strong>ndlayers</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">10</span></code>) – Number of sub-layers in the D layer for intermediate calculations.</p></li>
+<li><p><strong>fbot</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">150</span></code>) – Lower limit in [km] of the F layer of the ionosphere.</p></li>
+<li><p><strong>ftop</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">500</span></code>) – Upper limit in [km] of the F layer of the ionosphere.</p></li>
+<li><p><strong>nflayers</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">30</span></code>) – Number of sub-layers in the F layer for intermediate calculations.</p></li>
+<li><p><strong>_pbar</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, default: <code class="docutils literal notranslate"><span class="pre">False</span></code>) – If True - a progress bar will appear.</p></li>
+<li><p><strong>_autocalc</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, default: <code class="docutils literal notranslate"><span class="pre">True</span></code>) – If True - the model will be calculated immediately after definition.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonFrame.atten">
+<span class="sig-prename descclassname"><span class="pre">IonFrame.</span></span><span class="sig-name descname"><span class="pre">atten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">troposphere</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonFrame.atten" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>freq</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+available cores. Requires <cite>dt</cite> to be a single datetime object.</p></li>
+<li><p><strong>col_freq</strong> (str, default: <code class="docutils literal notranslate"><span class="pre">'default'</span></code>) – Collision frequency model. Available options: ‘default’, ‘nicolet’, ‘setty’, ‘aggrawal’,
+or float in Hz.</p></li>
+<li><p><strong>troposphere</strong> (bool, default: <code class="docutils literal notranslate"><span class="pre">True</span></code>) – If True - the troposphere refraction correction will be applied before calculation.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
+attenuation factor between 0 (total attenuation) and 1 (no attenuation).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="onion-ionmodel">
+<h2>onion.IonModel<a class="headerlink" href="#onion-ionmodel" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="onion.IonModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">onion.</span></span><span class="sig-name descname"><span class="pre">IonModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt_start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">position</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dbot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">90</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndlayers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fbot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">150</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ftop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nflayers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_autocalc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel" title="Permalink to this definition"></a></dt>
+<dd><p>A dynamic model of the ionosphere. Uses a sequence of <a class="reference internal" href="#onion.IonFrame" title="onion.IonFrame"><code class="xref py py-class docutils literal notranslate"><span class="pre">IonFrame</span></code></a> objects to
+interpolate ionospheric refraction and attenuation in the specified time range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt_start</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code>) – Start date/time of the model.</p></li>
+<li><p><strong>dt_end</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code>) – End date/time of the model.</p></li>
+<li><p><strong>position</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>]) – Geographical position of an observer. Must be a tuple containing
+latitude [deg], longitude [deg], and elevation [m].</p></li>
+<li><p><strong>mph</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">1</span></code>) – Number of static models per hour.</p></li>
+<li><p><strong>nside</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">128</span></code>) – Resolution of healpix grid.</p></li>
+<li><p><strong>dbot</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">60</span></code>) – Lower limit in [km] of the D layer of the ionosphere.</p></li>
+<li><p><strong>dtop</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">90</span></code>) – Upper limit in [km] of the D layer of the ionosphere.</p></li>
+<li><p><strong>ndlayers</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">10</span></code>) – Number of sub-layers in the D layer for intermediate calculations.</p></li>
+<li><p><strong>fbot</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">150</span></code>) – Lower limit in [km] of the F layer of the ionosphere.</p></li>
+<li><p><strong>ftop</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>, default: <code class="docutils literal notranslate"><span class="pre">500</span></code>) – Upper limit in [km] of the F layer of the ionosphere.</p></li>
+<li><p><strong>nflayers</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>, default: <code class="docutils literal notranslate"><span class="pre">30</span></code>) – Number of sub-layers in the F layer for intermediate calculations.</p></li>
+<li><p><strong>_autocalc</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, default: <code class="docutils literal notranslate"><span class="pre">True</span></code>) – If True - the model will be calculated immediately after definition.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.save">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.save" title="Permalink to this definition"></a></dt>
+<dd><p>Save the model to a file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>directory</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Path to directory to save the model.</p></li>
+<li><p><strong>name</strong> (<code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>], default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Name of the file (extension is not required).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.load">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.load" title="Permalink to this definition"></a></dt>
+<dd><p>Load a model from file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>path</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Path to a file (file extension is not required).</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#onion.IonModel" title="onion.IonModel.IonModel">IonModel</a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#onion.IonModel" title="onion.IonModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">IonModel</span></code></a> recovered from a file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.at">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">at</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recalc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.at" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dt</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">datetime</span></code>) – Date/time of the frame.</p></li>
+<li><p><strong>recalc</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code>, default: <code class="docutils literal notranslate"><span class="pre">False</span></code>) – If True - the <a class="reference internal" href="#onion.IonFrame" title="onion.IonFrame"><code class="xref py py-class docutils literal notranslate"><span class="pre">IonFrame</span></code></a> object will be precisely calculated. If False - an interpolation
+of two closest frames will be used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#onion.IonFrame" title="onion.IonFrame.IonFrame"><code class="xref py py-class docutils literal notranslate"><span class="pre">IonFrame</span></code></a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#onion.IonFrame" title="onion.IonFrame"><code class="xref py py-class docutils literal notranslate"><span class="pre">IonFrame</span></code></a> at specified time.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.atten">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">atten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_freq</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">troposphere</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.atten" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>] </em><em>| </em><em>np.ndarray</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores. Requires <cite>freq</cite> to be a single float.</p></li>
+<li><p><strong>freq</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+available cores. Requires <cite>dt</cite> to be a single datetime object.</p></li>
+<li><p><strong>col_freq</strong> (str, default: <code class="docutils literal notranslate"><span class="pre">'default'</span></code>) – Collision frequency model. Available options: ‘default’, ‘nicolet’, ‘setty’, ‘aggrawal’,
+or float in Hz.</p></li>
+<li><p><strong>troposphere</strong> (bool, default: <code class="docutils literal notranslate"><span class="pre">True</span></code>) – If True - the troposphere refraction correction will be applied before calculation.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
+attenuation factor between 0 (total attenuation) and 1 (no attenuation).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.refr">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">refr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">troposphere</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.refr" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>] </em><em>| </em><em>np.ndarray</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores. Requires <cite>freq</cite> to be a single float.</p></li>
+<li><p><strong>freq</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+available cores. Requires <cite>dt</cite> to be a single datetime object.</p></li>
+<li><p><strong>troposphere</strong> (bool, default: <code class="docutils literal notranslate"><span class="pre">True</span></code>) – If True - the troposphere refraction correction will be applied before calculation.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Refraction angle in [deg] at given sky coordinates, time and frequency of observation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.ded">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">ded</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.ded" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>]</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores.</p></li>
+<li><p><strong>layer</strong> (int | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – A number of sublayer to calculate. If None - an average value over all layers will be calculated.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Electron density in [m^-3] in the D layer of the ionosphere.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.det">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">det</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.det" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>]</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores.</p></li>
+<li><p><strong>layer</strong> (int | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – A number of sublayer to calculate. If None - an average value over all layers will be calculated.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Electron temperature in [K] in the D layer of the ionosphere.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.fed">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">fed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.fed" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>]</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores.</p></li>
+<li><p><strong>layer</strong> (int | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – A number of sublayer to calculate. If None - an average value over all layers will be calculated.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Electron density in [m^-3] in the F layer of the ionosphere.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.fet">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">fet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">el</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">az</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_pbar_desc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.fet" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>el</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Elevation of observation(s) in [deg].</p></li>
+<li><p><strong>az</strong> (<em>float</em><em> | </em><em>np.ndarray</em>) – Azimuth of observation(s) in [deg].</p></li>
+<li><p><strong>dt</strong> (<em>datetime</em><em> | </em><em>List</em><em>[</em><em>datetime</em><em>]</em>) – Datetime of observation(s). If list - the calculation will be performed in parallel on all available
+cores.</p></li>
+<li><p><strong>layer</strong> (int, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – A number of sublayer to calculate. If None - an average value over all layers will be calculated.</p></li>
+<li><p><strong>_pbar_desc</strong> (str | None, default: <code class="docutils literal notranslate"><span class="pre">None</span></code>) – Description of progress bar. If None - the progress bar will not appear.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>float | np.ndarray</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Electron temperature in [K] in the F layer of the ionosphere.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_atten_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_atten_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_atten_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of attenuation factor change with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>freq</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Frequency of observation.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_refr_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_refr_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'viridis_r'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_refr_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of refraction angle change with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>freq</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>) – Frequency of observation.</p></li>
+<li><p><strong>cmap</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, default: <code class="docutils literal notranslate"><span class="pre">'viridis_r'</span></code>) – Matplotlib colormap to use in plot.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_ded_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_ded_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_ded_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of change of electron temperature in the D layer with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_det_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_det_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_det_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of change of electron density in the D layer with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_fed_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_fed_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_fed_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of change of electron density in the F layer with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="onion.IonModel.animate_fet_vs_time">
+<span class="sig-prename descclassname"><span class="pre">IonModel.</span></span><span class="sig-name descname"><span class="pre">animate_fet_vs_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#onion.IonModel.animate_fet_vs_time" title="Permalink to this definition"></a></dt>
+<dd><p>Generates an animation of change of electron temperature in the F layer with time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>) – Name of file.</p></li>
+<li><p><strong>kwargs</strong> – See <cite>onion.plot_kwargs</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, lap1dem.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
