@@ -184,6 +184,6 @@ def pic2vid(
         os.path.join(savedir, vidname),
     ]
     ff = FfmpegProgress(cmd)
-    with tqdm(total=100, position=1, desc=desc) as pbar:
+    with tqdm(total=100, position=0, desc=desc, leave=True) as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)

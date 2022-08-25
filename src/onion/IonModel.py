@@ -238,7 +238,7 @@ class IonModel:
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Electron density in [m^-3] in the D layer of the ionosphere.
         """
-        funcs = [m.dlayer.ded for m in self.models]
+        funcs = [m.dlayer.ed for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def det(
@@ -258,7 +258,7 @@ class IonModel:
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Electron temperature in [K] in the D layer of the ionosphere.
         """
-        funcs = [m.dlayer.det for m in self.models]
+        funcs = [m.dlayer.et for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def fed(
@@ -278,7 +278,7 @@ class IonModel:
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Electron density in [m^-3] in the F layer of the ionosphere.
         """
-        funcs = [m.flayer.fed for m in self.models]
+        funcs = [m.flayer.ed for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def fet(
@@ -298,7 +298,7 @@ class IonModel:
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Electron temperature in [K] in the F layer of the ionosphere.
         """
-        funcs = [m.flayer.fet for m in self.models]
+        funcs = [m.flayer.et for m in self.models]
         return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
@@ -466,6 +466,8 @@ class IonModel:
             dpi: int = 300,
             cmap: str = "viridis",
             pbar_label: str = "",
+            nancolor: str = "black",
+            local_time: int | None = None,
     ):
         """
         Abstract method for generating animations.
@@ -486,8 +488,8 @@ class IonModel:
             func(el, az, dts, *extra_args, _pbar_desc="[1/3] Calculating data")
         )
 
-        cbmax = np.max(data)
-        cbmin = np.min(data)
+        cbmax = np.nanmax(data)
+        cbmin = np.nanmin(data)
 
         tmpdir = tempfile.mkdtemp()
         nproc = np.min([cpu_count(), len(dts)])
@@ -510,6 +512,9 @@ class IonModel:
                             plot_saveto,
                             itertools.repeat(dpi),
                             itertools.repeat(cmap),
+                            itertools.repeat(None),
+                            itertools.repeat(nancolor),
+                            itertools.repeat(local_time),
                         ),
                     ),
                     desc="[2/3] Rendering frames",

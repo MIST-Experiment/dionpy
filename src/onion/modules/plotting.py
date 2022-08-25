@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Tuple
 
 import numpy as np
@@ -22,6 +22,7 @@ plot_kwargs = {
     "cmap": "A colormap to use in the plot.",
     "cbformat": "Formatter of numbers on the colorbar scale.",
     "nancolor": "A color to fill np.nan in the plot.",
+    "local_time": "Difference between local time and UTC. If specified - local time is shown instead of UTC",
 }
 
 
@@ -39,6 +40,7 @@ def polar_plot(
     cmap: str = "viridis",
     cbformat: str = None,
     nancolor: str = "black",
+    local_time: int | None = None,
 ):
     """
     A core function for graphic generation on the visible sky field.
@@ -51,7 +53,18 @@ def polar_plot(
         if pos is not None:
             plotlabel += f"Position: lat={pos[0]:.3f}, lon={pos[1]:.3f}\n"
         if dt is not None:
-            plotlabel += "UTC time: " + datetime.strftime(dt, "%Y-%m-%d %H:%M") + "\n"
+            if local_time is None:
+                plotlabel += (
+                    "UTC time: " + datetime.strftime(dt, "%Y-%m-%d %H:%M") + "\n"
+                )
+            elif isinstance(local_time, int):
+                plotlabel += (
+                    "Local time: "
+                    + datetime.strftime(
+                        dt + timedelta(hours=local_time), "%Y-%m-%d %H:%M"
+                    )
+                    + "\n "
+                )
         if freq is not None:
             plotlabel += f"Frequency: {freq / 1e6:.1f} MHz"
 

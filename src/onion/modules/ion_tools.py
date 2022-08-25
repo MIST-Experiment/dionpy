@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
+np.seterr(invalid="ignore")
 
 
 def srange(
@@ -42,7 +43,9 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     :param freq: Observational frequency in [Hz].
     :return: Refractive index of the ionosphere from electron density.
     """
-    return (1 - (plasfreq(n_e) / freq) ** 2) ** 0.5
+    nu_p = plasfreq(n_e)
+    return np.sqrt(1 - (nu_p / freq) ** 2)
+
 
 
 def refr_angle(
