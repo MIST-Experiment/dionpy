@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath('../src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'onion'
+project = 'dionpy'
 copyright = '2022, Vadym Bidula'
 author = 'Vadym Bidula'
 email = 'vadym.bidula@gmail.com'
@@ -39,8 +39,10 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx_autodoc_typehints',
-
+    'sphinxcontrib.bibtex',
 ]
+
+bibtex_bibfiles = ['refs.bib']
 
 autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance', 'inherited-members']
 autosummary_generate = True
@@ -72,6 +74,7 @@ from sphinx.ext.autosummary import Autosummary
 from sphinx.ext.autosummary import get_documenter
 from docutils.parsers.rst import directives
 from sphinx.util.inspect import safe_getattr
+
 
 class AutoAutoSummary(Autosummary):
 

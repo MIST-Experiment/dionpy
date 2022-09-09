@@ -14,4 +14,7 @@ Contents
    :glob:
 
    installation
-   reference
+   quickstart
+   overview
+   user_guide/index
+   reference/index
