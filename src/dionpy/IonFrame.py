@@ -232,7 +232,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         barlabel = r"$m^{-3}$"
@@ -252,7 +252,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         barlabel = r"$K^\circ$"
@@ -272,7 +272,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         barlabel = r"$m^{-3}$"
@@ -292,7 +292,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         barlabel = r"$K^\circ$"
@@ -315,7 +315,7 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
@@ -346,12 +346,14 @@ class IonFrame:
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
+        print("NaN\t", np.isnan(refr).any())
+        print("Inf\t", np.isinf(refr).any())
         return polar_plot(
             (np.deg2rad(az), 90 - el, refr),
             dt=self.dt,
@@ -368,7 +370,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
@@ -465,7 +467,7 @@ class IonFrame:
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
         :param cmap: Matplotlib colormap to use in plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
             self.atten,
@@ -495,7 +497,7 @@ class IonFrame:
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
         :param cmap: Matplotlib colormap to use in plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
             self.refr,

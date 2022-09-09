@@ -103,7 +103,9 @@ class FLayer(IonLayer):
         n_next = refr_index(fed, freq)
         # The outgoing angle at the 1st interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
+
         delta_theta += theta_ref - theta_inc
+
         el_cur = np.rad2deg(np.pi / 2 - theta_ref)
         n_cur = n_next
 
@@ -122,15 +124,19 @@ class FLayer(IonLayer):
             lat_ray, lon_ray, _ = pm.aer2geodetic(
                 az, el_cur, r_slant, lat_ray, lon_ray, f_heights[i - 1], ell=ell
             )
-            # Get IRI info of 2nd point
-            fed = self.ed(el, az, layer=i)
+            if i == self.nlayers-1:
+                n_next = 1
+            else:
+                # Get IRI info of 2nd point
+                fed = self.ed(el, az, layer=i)
 
-            # Refractive indices
-            n_next = refr_index(fed, freq)
+                # Refractive indices
+                n_next = refr_index(fed, freq)
 
             # The outgoing angle at the 2nd interface using Snell's law
             theta_ref = refr_angle(n_cur, n_next, theta_inc)
             delta_theta += theta_ref - theta_inc
+
 
             # Update variables for new interface
             el_cur = np.rad2deg(np.pi / 2 - theta_ref)

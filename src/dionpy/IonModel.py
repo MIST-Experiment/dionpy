@@ -533,7 +533,7 @@ class IonModel:
 
         :param name: Name of file.
         :param freq: Frequency of observation.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._time_animation(
             self.atten,
@@ -550,7 +550,7 @@ class IonModel:
         :param name: Name of file.
         :param freq: Frequency of observation.
         :param cmap: Matplotlib colormap to use in plot.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$deg$"
         self._time_animation(
@@ -568,7 +568,7 @@ class IonModel:
         Generates an animation of change of electron temperature in the D layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
@@ -584,7 +584,7 @@ class IonModel:
         Generates an animation of change of electron density in the D layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(
@@ -600,7 +600,7 @@ class IonModel:
         Generates an animation of change of electron density in the F layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
@@ -616,7 +616,7 @@ class IonModel:
         Generates an animation of change of electron temperature in the F layer with time.
 
         :param name: Name of file.
-        :param kwargs: See `onion.plot_kwargs`.
+        :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(
