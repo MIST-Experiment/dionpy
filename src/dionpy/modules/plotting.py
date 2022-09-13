@@ -22,6 +22,7 @@ plot_kwargs = {
     "cmap": "A colormap to use in the plot.",
     "cbformat": "Formatter of numbers on the colorbar scale.",
     "nancolor": "A color to fill np.nan in the plot.",
+    "infcolor": "A color to fill np.inf in the plot.",
     "local_time": "Difference between local time and UTC. If specified - local time is shown instead of UTC",
 }
 
@@ -40,6 +41,7 @@ def polar_plot(
     cmap: str = "viridis",
     cbformat: str = None,
     nancolor: str = "black",
+    infcolor: str = "white",
     local_time: int | None = None,
 ):
     """
@@ -66,15 +68,16 @@ def polar_plot(
                     + "\n "
                 )
         if freq is not None:
-            plotlabel += f"Frequency: {freq / 1e6:.1f} MHz"
+            plotlabel += f"Frequency: {freq:.1f} MHz"
 
-    cblim = cblim or (np.nanmin(data[2]), np.nanmax(data[2]))
-
+    cblim = cblim or (np.nanmin(data[2][data[2] != -np.inf]), np.nanmax(data[2][data[2] != np.inf]))
+    plot_data = np.where(np.isinf(data[2]), cblim[1]+1e8, data[2])
     if isinstance(cmap, str):
         cmap = colormaps[cmap]
-    cmap.set_bad(nancolor, 1.0)
+    cmap.set_bad(nancolor)
+    cmap.set_over(infcolor)
 
-    masked_data = np.ma.array(data[2], mask=np.isnan(data[2]))
+    masked_data = np.ma.array(plot_data, mask=np.isnan(plot_data))
 
     fig = plt.figure(figsize=(8, 8))
     ax: plt.Axes = fig.add_subplot(111, projection="polar")

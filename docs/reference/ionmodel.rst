@@ -1,9 +1,9 @@
 IonModel
 ----------------
 
-.. autoclass:: onion.IonModel
+.. autoclass:: dionpy.IonModel
     :members:
 
     .. rubric:: Methods
-    .. autoautosummary:: onion.IonModel
+    .. autoautosummary:: dionpy.IonModel
         :methods:

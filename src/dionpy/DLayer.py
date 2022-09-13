@@ -69,6 +69,7 @@ class DLayer(IonLayer):
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
+        freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
         atten = np.empty((*el.shape, self.nlayers))

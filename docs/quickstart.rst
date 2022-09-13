@@ -1,24 +1,26 @@
 Quickstart
 ============
 
-The ``onion`` package provides model of ionosphere refraction and attenuation based
-on the `IRI2016 Ionosphere Model <https://irimodel.org/>`_.
-The `Memo 62 <http://www.physics.mcgill.ca/mist/memos/MIST_memo_62.pdf>`_ of the
-`MIST <http://www.physics.mcgill.ca/mist/>`_ experiment introduced a new Python interface to the IRI 2016 Fortran core
-code - the ``iricore`` package. This interface was optimized for the MIST purposes.
-The ``iricore`` will be installed automatically during the installation of the ``onion`` if you meet all the requirements.
-However, the ``iricore`` can be compiled only on Linux systems, which puts the same restriction on the ``onion``.
-If you are using Windows - consider installing `WSL <https://docs.microsoft.com/en-us/windows/wsl/install>`_.
-
-Before installing the ``onion`` pakage you need preinstalled:
-
-* Fortran compiler, e.g. `GFortran <https://gcc.gnu.org/wiki/GFortran>`_ - for source code compilation
-* `FFmpeg <https://ffmpeg.org/>`_ - for rendering animated models
-
 .. code-block::
 
-    sudo apt install gfortran ffmpeg
+    from dionpy import IonFrame
+    import matplotlib.pyplot as plt
+    from datetime import datetime
 
-Now you can simply install ``onion`` using ``pip`` or any other package manager::
+    # Date of observation
+    dt = datetime(year=2022, month=7, day=17, hour=12, minute=0)
 
-    pip install onion
+    # Instrument position: latitude [deg], longitude [deg], altitude [m]
+    pos = (79.418, -90.810, 0)
+
+    # Define a model
+    model = IonFrame(dt, pos)
+
+    # Plot ionospheric attenuation
+    model.plot_atten(freq=40, title=r"Attenuation factor $f_a$")
+    plt.show()
+
+    # Plot ionospheric refraction
+    model.plot_refr(freq=40, title=r"Refraction angle $\delta \theta$")
+    plt.show()
+

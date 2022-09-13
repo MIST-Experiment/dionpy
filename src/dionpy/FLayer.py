@@ -8,7 +8,7 @@ import pymap3d as pm
 
 from .IonLayer import IonLayer
 from .modules.helpers import Ellipsoid, check_elaz_shape
-from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr
+from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr, plasfreq
 
 
 class FLayer(IonLayer):
@@ -65,12 +65,15 @@ class FLayer(IonLayer):
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
+        freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
         re = 6378100.0
         ell = Ellipsoid()
         f_heights = np.linspace(self.hbot, self.htop, self.nlayers) * 1e3
         delta_theta = 0 * el
+        inf_theta_mask = 0 * el
+        nan_theta_mask = 0 * el
 
         theta = np.deg2rad(90 - el)
         if troposphere:
@@ -101,8 +104,11 @@ class FLayer(IonLayer):
 
         # Refraction index of 1st point
         n_next = refr_index(fed, freq)
+        nan_theta_mask += plasfreq(fed) > freq
         # The outgoing angle at the 1st interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
+        inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
+
 
         delta_theta += theta_ref - theta_inc
 
@@ -132,9 +138,12 @@ class FLayer(IonLayer):
 
                 # Refractive indices
                 n_next = refr_index(fed, freq)
+                nan_theta_mask += plasfreq(fed) > freq
+
 
             # The outgoing angle at the 2nd interface using Snell's law
             theta_ref = refr_angle(n_cur, n_next, theta_inc)
+            inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
             delta_theta += theta_ref - theta_inc
 
 
@@ -143,4 +152,6 @@ class FLayer(IonLayer):
             n_cur = n_next
             d_cur = d_next
 
+        delta_theta = np.where(inf_theta_mask == 0, delta_theta, np.inf)
+        delta_theta = np.where(nan_theta_mask == 0, delta_theta, np.nan)
         return np.rad2deg(delta_theta)

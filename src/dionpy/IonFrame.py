@@ -320,14 +320,13 @@ class IonFrame:
         """
         el, az = elaz_mesh(gridsize)
         atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
-        atten_db = 20 * np.log10(atten)
-        barlabel = r"dB"
+        # atten_db = 20 * np.log10(atten)
+        # barlabel = r"dB"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, atten_db),
+            (np.deg2rad(az), 90 - el, atten),
             dt=self.dt,
             pos=self.position,
             freq=freq,
-            barlabel=barlabel,
             **kwargs,
         )
 
@@ -352,8 +351,6 @@ class IonFrame:
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
-        print("NaN\t", np.isnan(refr).any())
-        print("Inf\t", np.isinf(refr).any())
         return polar_plot(
             (np.deg2rad(az), 90 - el, refr),
             dt=self.dt,
@@ -389,7 +386,7 @@ class IonFrame:
         self,
         func: Callable,
         name: str,
-        freqrange: Tuple[float, float] = (45e6, 125e6),
+        freqrange: Tuple[float, float] = (45, 125),
         gridsize: int = 200,
         fps: int = 20,
         duration: int = 5,
@@ -454,7 +451,7 @@ class IonFrame:
     def animate_atten_vs_freq(
         self,
         name: str,
-        freqrange: Tuple[float, float] = (45e6, 125e6),
+        freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
         **kwargs,
@@ -483,7 +480,7 @@ class IonFrame:
     def animate_refr_vs_freq(
         self,
         name,
-        freqrange: Tuple[float, float] = (45e6, 125e6),
+        freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
         cmap="viridis_r",

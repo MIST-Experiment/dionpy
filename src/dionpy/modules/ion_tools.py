@@ -44,9 +44,7 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     :return: Refractive index of the ionosphere from electron density.
     """
     nu_p = plasfreq(n_e)
-    res = np.sqrt(1 - (nu_p / freq) ** 2)
-    print(np.isnan(res).any())
-    return np.where(np.isnan(res), np.inf, res)
+    return np.sqrt(1 - (nu_p / freq) ** 2)
 
 
 

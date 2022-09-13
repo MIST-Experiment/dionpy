@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.98.0"
+version = "0.98.1"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/lap1dem/onion"
+repository = "https://github.com/lap1dem/dionpy"
 include = [
     "LICENSE",
 ]
@@ -33,12 +33,12 @@ pytz = "^2022.1"
 it = "^1.0.0"
 jupyter = "^1.0.0"
 healpy = "^1.15.2"
-iricore = "^1.0.5"
 Sphinx = "^5.0.2"
 sphinx-rtd-theme = "^1.0.0"
 sphinx-autodoc-typehints = "^1.19.1"
 ffmpeg-progress-yield = "^0.3.0"
 sphinxcontrib-bibtex = "^2.5.0"
+iricore = "^1.0.5"
 
 
 [tool.poetry.dev-dependencies]

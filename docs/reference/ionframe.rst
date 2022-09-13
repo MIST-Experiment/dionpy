@@ -1,9 +1,9 @@
 IonFrame
 ----------------
 
-.. autoclass:: onion.IonFrame
+.. autoclass:: dionpy.IonFrame
     :members:
 
     .. rubric:: Methods
-    .. autoautosummary:: onion.IonFrame
+    .. autoautosummary:: dionpy.IonFrame
         :methods:
