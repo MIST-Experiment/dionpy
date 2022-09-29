@@ -411,8 +411,7 @@ class IonFrame:
         nframes = duration * fps
         freqs = np.linspace(*freqrange, nframes)[::-1]
         data = np.array(func(el, az, freqs, _pbar_desc="[1/3] Calculating data"))
-        cbmax = np.nanmax(data)
-        cbmin = np.nanmin(data)
+        cbmin, cbmax = np.nanmin(data[data != -np.inf]), np.nanmax(data[data != np.inf])
 
         tmpdir = tempfile.mkdtemp()
         nproc = np.min([cpu_count(), len(freqs)])

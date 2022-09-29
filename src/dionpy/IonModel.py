@@ -467,6 +467,7 @@ class IonModel:
             cmap: str = "viridis",
             pbar_label: str = "",
             nancolor: str = "black",
+            infcolor: str = "white",
             local_time: int | None = None,
     ):
         """
@@ -488,8 +489,7 @@ class IonModel:
             func(el, az, dts, *extra_args, _pbar_desc="[1/3] Calculating data")
         )
 
-        cbmax = np.nanmax(data)
-        cbmin = np.nanmin(data)
+        cbmin, cbmax = np.nanmin(data[data != -np.inf]), np.nanmax(data[data != np.inf])
 
         tmpdir = tempfile.mkdtemp()
         nproc = np.min([cpu_count(), len(dts)])
@@ -514,6 +514,7 @@ class IonModel:
                             itertools.repeat(cmap),
                             itertools.repeat(None),
                             itertools.repeat(nancolor),
+                            itertools.repeat(infcolor),
                             itertools.repeat(local_time),
                         ),
                     ),

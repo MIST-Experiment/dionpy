@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Any
 
 import numpy as np
+from numpy import ndarray
 
 from .IonLayer import IonLayer
 from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
@@ -56,8 +57,9 @@ class DLayer(IonLayer):
             az: float | np.ndarray,
             freq: float | np.ndarray,
             col_freq: str = "default",
+            emission: bool = False,
             troposphere: bool = True,
-    ) -> float | np.ndarray:
+    ) -> ndarray | Tuple[ndarray, ndarray]:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
@@ -73,6 +75,7 @@ class DLayer(IonLayer):
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
         atten = np.empty((*el.shape, self.nlayers))
+        emiss = np.empty((*el.shape, self.nlayers))
         dh = (self.htop - self.hbot) / self.nlayers * 1e3
 
         if col_freq == "default" or "aggrawal":
@@ -97,12 +100,14 @@ class DLayer(IonLayer):
         for i in range(self.nlayers):
             freq_c = col_model(heights_km[i])
             ded = self.ed(el, az, layer=i)
+            det = self.et(el, az, layer=i)
             freq_p = plasfreq(ded)
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
             atten[:, :, i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
+            emiss[:, :, i] = (1 - atten[:, :, i]) * det
         # atten = 1 + atten.sum(axis=2) - self.nlayers
         atten = atten.prod(axis=2)
 
         if atten.size == 1:
-            return atten[0, 0]
-        return atten
+            atten = atten[0, 0]
+        return atten, emiss if emission else atten
