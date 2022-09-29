@@ -67,6 +67,7 @@ class DLayer(IonLayer):
                      available cores. Requires `dt` to be a single datetime object.
         :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
                          or float in Hz.
+        :param emission: If True - also returns array of emission temperatures.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
@@ -110,4 +111,6 @@ class DLayer(IonLayer):
 
         if atten.size == 1:
             atten = atten[0, 0]
-        return atten, emiss if emission else atten
+        if emission:
+            return atten, emiss
+        return atten
