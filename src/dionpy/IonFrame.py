@@ -37,6 +37,9 @@ class IonFrame:
     :param fbot: Lower limit in [km] of the F layer of the ionosphere.
     :param ftop: Upper limit in [km] of the F layer of the ionosphere.
     :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
+                        the last two digits of the IRI version number. For example, version 20 refers
+                        to IRI-2020.
     :param _pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
@@ -52,6 +55,7 @@ class IonFrame:
         fbot: float = 150,
         ftop: float = 500,
         nflayers: int = 30,
+        iriversion: int = 20,
         _pbar: bool = False,
         _autocalc: bool = True,
     ):
@@ -61,11 +65,12 @@ class IonFrame:
             raise ValueError("Parameter dt must be a datetime object.")
         self.position = position
         self.nside = nside
+        self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, _pbar, _autocalc
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, _pbar, _autocalc
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, _pbar, _autocalc
+            dt, position, fbot, ftop, nflayers, nside, iriversion, _pbar, _autocalc
         )
 
     @staticmethod
@@ -148,6 +153,7 @@ class IonFrame:
         meta.attrs["position"] = self.position
         meta.attrs["dt"] = self.dt.strftime("%Y-%m-%d %H:%M")
         meta.attrs["nside"] = self.nside
+        meta.attrs["iriversion"] = self.iriversion
 
         meta.attrs["ndlayers"] = self.dlayer.nlayers
         meta.attrs["dtop"] = self.dlayer.htop
@@ -196,6 +202,7 @@ class IonFrame:
             fbot=meta.attrs["fbot"],
             ftop=meta.attrs["ftop"],
             nflayers=meta.attrs["nflayers"],
+            iriversion=meta.attrs["iriversion"],
         )
         obj.dlayer.edens = none_or_array(grp.get("dedens"))
         obj.dlayer.etemp = none_or_array(grp.get("detemp"))

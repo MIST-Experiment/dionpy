@@ -102,7 +102,7 @@ def polar_plot(
     plt.xlabel(plotlabel, fontsize=10)
     if saveto is not None:
         head, tail = os.path.split(saveto)
-        if not os.path.exists(head):
+        if not os.path.exists(head) and len(head) > 0:
             os.makedirs(head)
         plt.savefig(saveto, dpi=dpi, bbox_inches="tight")
         plt.close(fig)

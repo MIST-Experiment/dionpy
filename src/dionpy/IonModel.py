@@ -35,6 +35,9 @@ class IonModel:
     :param fbot: Lower limit in [km] of the F layer of the ionosphere.
     :param ftop: Upper limit in [km] of the F layer of the ionosphere.
     :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
+                    the last two digits of the IRI version number. For example, version 20 refers
+                    to IRI-2020.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
 
@@ -51,6 +54,7 @@ class IonModel:
             fbot: float = 150,
             ftop: float = 500,
             nflayers: int = 30,
+            iriversion: int = 20,
             _autocalc: bool = True,
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
@@ -74,6 +78,7 @@ class IonModel:
         self.position = position
         self.mph = mph
         self.nside = nside
+        self.iriversion = iriversion
         self.models = []
         if _autocalc:
             for dt in tqdm(self._dts, desc="Calculating time frames"):
@@ -88,6 +93,7 @@ class IonModel:
                         fbot,
                         ftop,
                         nflayers,
+                        iriversion,
                         _pbar=False,
                         _autocalc=_autocalc,
                     )
@@ -131,6 +137,7 @@ class IonModel:
         meta.attrs["hbot"] = self.fbot
         meta.attrs["htop"] = self.ftop
         meta.attrs["nlayers"] = self.nflayers
+        meta.attrs["iriversion"] = self.iriversion
 
         for model in self.models:
             model.write_self_to_file(file)
@@ -174,6 +181,7 @@ class IonModel:
                 fbot=meta.attrs["hbot"],
                 ftop=meta.attrs["htop"],
                 nflayers=meta.attrs["nlayers"],
+                iriversion=meta.attrs["iriversion"],
             )
             for group in groups:
                 grp = file[group]

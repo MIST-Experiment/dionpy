@@ -30,7 +30,7 @@ the collision frequency is much higher in the D-layer (60-90 km) than in the F-l
 
     Model of collision frequency in the ionosphere from :cite:t:`AGGARWAL1979753`.
 
-For generating electron density altitude profiles we use the IRI-2016 model :cite:p:`Bilitza2017`. As
+For generating electron density altitude profiles we use the `IRI-2020 <https://irimodel.org/>` model :cite:p:`Bilitza2017`. As
 opposed to the collision frequency, the electron density is a few orders of magnitude higher in the F-layer than in the
 D-layer.
 

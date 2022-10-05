@@ -29,6 +29,9 @@ class IonLayer:
     :param rdeg: Radius of disc in [deg] queried to healpy (view distance).
     :param pbar: If True - a progress bar will appear.
     :param name: Name of the layer for description use.
+    :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
+                        the last two digits of the IRI version number. For example, version 20 refers
+                        to IRI-2020.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
     def __init__(
@@ -42,6 +45,7 @@ class IonLayer:
         rdeg: float = 20,
         pbar: bool = True,
         name: str | None = None,
+        iriversion: int = 20,
         _autocalc: bool = True,
     ):
         self.hbot = hbot
@@ -53,6 +57,7 @@ class IonLayer:
 
         self.nside = nside
         self.rdeg = rdeg
+        self.iriversion = iriversion
         self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
         self._obs_pixels = hp.query_disc(
             self.nside, self._posvec, np.deg2rad(self.rdeg), inclusive=True
@@ -89,7 +94,7 @@ class IonLayer:
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
         """
-        batch = 1000
+        batch = 500
         nbatches = len(self._obs_pixels) // batch + 1
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
@@ -111,6 +116,7 @@ class IonLayer:
                             blat,
                             blon,
                             itertools.repeat(0.0),
+                            itertools.repeat(self.iriversion),
                         ),
                     ),
                     total=nbatches,

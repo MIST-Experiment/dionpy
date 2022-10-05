@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Tuple, Any
+from typing import Tuple
 
 import numpy as np
 from numpy import ndarray
@@ -23,6 +23,9 @@ class DLayer(IonLayer):
     :param htop: Upper limit in [km] of the D layer of the ionosphere.
     :param nlayers: Number of sub-layers in the D layer for intermediate calculations.
     :param nside: Resolution of healpix grid.
+    :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
+                        the last two digits of the IRI version number. For example, version 20 refers
+                        to IRI-2020.
     :param pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
@@ -35,6 +38,7 @@ class DLayer(IonLayer):
             htop: float = 90,
             nlayers: int = 10,
             nside: int = 128,
+            iriversion: int = 20,
             pbar: bool = True,
             _autocalc: bool = True,
     ):
@@ -47,6 +51,7 @@ class DLayer(IonLayer):
             nside,
             rdeg=12,
             pbar=pbar,
+            iriversion=iriversion,
             _autocalc=_autocalc,
             name="D layer",
         )

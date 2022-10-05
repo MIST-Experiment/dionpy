@@ -16,12 +16,13 @@ If you are using Windows - consider installing `WSL <https://docs.microsoft.com/
 
 Before installing the ``dionpy`` pakage you need preinstalled:
 
-* Fortran compiler, e.g. `GFortran <https://gcc.gnu.org/wiki/GFortran>`_ - for source code compilation
+* Fortran compiler, e.g. `GFortran <https://gcc.gnu.org/wiki/GFortran>`_
+* `CMAKE <https://cmake.org/>`_
 * `FFmpeg <https://ffmpeg.org/>`_ - for rendering animated models
 
 .. code-block::
 
-    sudo apt install gfortran ffmpeg
+    sudo apt install gfortran cmake ffmpeg
 
 Now you can simply install ``dionpy`` using ``pip`` or any other package manager::
 
