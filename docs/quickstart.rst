@@ -15,17 +15,17 @@ Quickstart
     pos = (79.418, -90.810, 0)
 
     # Define a model
-    model = IonFrame(dt, pos)
+    frame = IonFrame(dt, pos)
 
     # Define frequency of observation in [MHz]
     freq = 40
 
     # Plot ionospheric attenuation
-    model.plot_atten(freq, title=r"Attenuation factor $f_a$")
+    frame.plot_atten(freq, title=r"Attenuation factor $f_a$")
     plt.show()
 
     # Plot ionospheric refraction
-    model.plot_refr(freq, title=r"Refraction angle $\delta \theta$")
+    frame.plot_refr(freq, title=r"Refraction angle $\delta \theta$")
     plt.show()
 
 .. figure:: images/qs_atten.png
@@ -45,14 +45,14 @@ Quickstart
     el_m, az_m = np.meshgrid(el, az)  # Rectangular coordinate grid
 
     # Access attenuation in numeric form
-    atten = model.atten(el_m, az_m, freq)
+    atten = frame.atten(el_m, az_m, freq)
 
     print(f"Attenuation at {freq} MHz\n" +
           f"Min:\t{np.min(atten):.2f}\n" +
           f"Max:\t{np.max(atten):.2f}\n")
 
     # Access refraction in numeric form
-    refr = model.refr(el_m, az_m, freq)
+    refr = frame.refr(el_m, az_m, freq)
 
     print(f"Refraction at {freq} MHz\n" +
           f"Min:\t{np.min(refr):.2f}\n" +

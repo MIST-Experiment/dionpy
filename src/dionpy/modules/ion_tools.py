@@ -66,6 +66,9 @@ def refr_angle(
 
 def trop_refr(theta: float | np.ndarray) -> float | np.ndarray:
     """
+    Approximation of the refraction in the troposphere recommended by the ITU-R:
+    https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
+
     :param theta: Zenith angle in radians.
     :return: Change of the angle theta due to tropospheric refraction (in radians).
     """

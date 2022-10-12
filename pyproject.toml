@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.98.7"
+version = "0.99.0"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -41,7 +41,7 @@ sphinx-rtd-theme = "^1.0.0"
 sphinx-autodoc-typehints = "^1.19.1"
 ffmpeg-progress-yield = "^0.3.0"
 sphinxcontrib-bibtex = "^2.5.0"
-iricore = "^1.1.5"
+iricore = "^1.1.6"
 
 
 

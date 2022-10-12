@@ -36,8 +36,8 @@ class DLayer(IonLayer):
             position: Tuple[float, float, float],
             hbot: float = 60,
             htop: float = 90,
-            nlayers: int = 10,
-            nside: int = 128,
+            nlayers: int = 100,
+            nside: int = 64,
             iriversion: int = 20,
             pbar: bool = True,
             _autocalc: bool = True,
@@ -68,7 +68,7 @@ class DLayer(IonLayer):
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
-        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
+        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on all
                      available cores. Requires `dt` to be a single datetime object.
         :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
                          or float in Hz.
@@ -77,6 +77,7 @@ class DLayer(IonLayer):
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
+        # TODO: Add depedency on instrument height
         freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()

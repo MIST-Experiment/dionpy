@@ -5,5 +5,9 @@ User Guide
    :maxdepth: 2
    :glob:
 
-   ionframe_basics
-   ionframe_plotting
+   ion_frame
+   plotting_frames
+   freq_anim
+   ion_model
+   plotting_models
+   time_anim

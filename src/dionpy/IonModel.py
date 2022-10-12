@@ -27,7 +27,7 @@ class IonModel:
     :param dt_end: End date/time of the model.
     :param position: Geographical position of an observer. Must be a tuple containing
                      latitude [deg], longitude [deg], and elevation [m].
-    :param mph: Number of static models per hour.
+    :param fph: Number of frames per hour.
     :param nside: Resolution of healpix grid.
     :param dbot: Lower limit in [km] of the D layer of the ionosphere.
     :param dtop: Upper limit in [km] of the D layer of the ionosphere.
@@ -46,14 +46,14 @@ class IonModel:
             dt_start: datetime,
             dt_end: datetime,
             position: Tuple[float, float, float],
-            mph: int = 1,
-            nside: int = 128,
+            fph: int = 4,
+            nside: int = 64,
             dbot: float = 60,
             dtop: float = 90,
-            ndlayers: int = 10,
+            ndlayers: int = 100,
             fbot: float = 150,
             ftop: float = 500,
-            nflayers: int = 30,
+            nflayers: int = 100,
             iriversion: int = 20,
             _autocalc: bool = True,
     ):
@@ -62,7 +62,7 @@ class IonModel:
         self.dt_start = dt_start
         self.dt_end = dt_end
         nhours = (dt_end - dt_start).total_seconds() / 3600
-        nmodels = int(nhours * mph)
+        nmodels = int(nhours * fph)
         tdelta = timedelta(hours=nhours / nmodels)
         self._dts = np.asarray(
             [dt_start + tdelta * i for i in range(nmodels + 1)]
@@ -76,7 +76,7 @@ class IonModel:
         self.nflayers = nflayers
 
         self.position = position
-        self.mph = mph
+        self.fph = fph
         self.nside = nside
         self.iriversion = iriversion
         self.models = []
@@ -130,7 +130,7 @@ class IonModel:
         meta.attrs["dt_start"] = self.dt_start.strftime("%Y-%m-%d %H:%M")
         meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
         meta.attrs["nside"] = self.nside
-        meta.attrs["mph"] = self.mph
+        meta.attrs["fph"] = self.fph
         meta.attrs["dbot"] = self.dbot
         meta.attrs["dtop"] = self.dtop
         meta.attrs["nlayers"] = self.ndlayers
@@ -174,7 +174,7 @@ class IonModel:
                 dt_end=datetime.strptime(meta.attrs["dt_end"], "%Y-%m-%d %H:%M"),
                 position=meta.attrs["position"],
                 nside=meta.attrs["nside"],
-                mph=meta.attrs["mph"],
+                fph=meta.attrs["fph"],
                 dbot=meta.attrs["dbot"],
                 dtop=meta.attrs["dtop"],
                 ndlayers=meta.attrs["nlayers"],

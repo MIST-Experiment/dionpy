@@ -1,4 +1,6 @@
-# dionpy
+![https://dionpy.readthedocs.io/en/latest/](docs/images/logos/logo_wide.png)
+
+# DIonPy
 The `dionpy` package provides model of ionosphere refraction and attenuation based on the 
-[IRI2016 Ionosphere Model](https://irimodel.org/).
+[IRI2020 Ionosphere Model](https://irimodel.org/).
 A more detailed overview will be available soon.

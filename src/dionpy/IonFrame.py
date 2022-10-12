@@ -48,13 +48,13 @@ class IonFrame:
         self,
         dt: datetime,
         position: Tuple[float, float, float],
-        nside: int = 128,
+        nside: int = 64,
         dbot: float = 60,
         dtop: float = 90,
-        ndlayers: int = 10,
+        ndlayers: int = 100,
         fbot: float = 150,
         ftop: float = 500,
-        nflayers: int = 30,
+        nflayers: int = 100,
         iriversion: int = 20,
         _pbar: bool = False,
         _autocalc: bool = True,
@@ -87,7 +87,7 @@ class IonFrame:
     def troprefr(el: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
-        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
+        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
 
         :param el: Elevation of observation(s) in [deg].
         :return: Refraction in the troposphere in [deg].
@@ -460,6 +460,7 @@ class IonFrame:
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
+        savedir: str = "animations/",
         **kwargs,
     ):
         """
@@ -469,7 +470,7 @@ class IonFrame:
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
-        :param cmap: Matplotlib colormap to use in plot.
+        :param savedir: Path to directory for file saving.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
@@ -478,6 +479,7 @@ class IonFrame:
             freqrange=freqrange,
             fps=fps,
             duration=duration,
+            savedir=savedir,
             pbar_label="D layer attenuation",
             cbformat="%.3f",
             **kwargs,
@@ -489,6 +491,7 @@ class IonFrame:
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
+        savedir: str = "animations/",
         cmap="viridis_r",
         **kwargs,
     ):
@@ -499,6 +502,7 @@ class IonFrame:
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
+        :param savedir: Path to directory for file saving.
         :param cmap: Matplotlib colormap to use in plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
@@ -508,6 +512,7 @@ class IonFrame:
             freqrange=freqrange,
             fps=fps,
             duration=duration,
+            savedir=savedir,
             pbar_label="F layer refraction",
             barlabel=r"deg",
             cmap=cmap,

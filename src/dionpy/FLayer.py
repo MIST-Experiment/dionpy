@@ -35,8 +35,8 @@ class FLayer(IonLayer):
         position: Tuple[float, float, float],
         hbot: float = 150,
         htop: float = 500,
-        nlayers: int = 30,
-        nside: int = 128,
+        nlayers: int = 100,
+        nside: int = 64,
         iriversion: int = 20,
         pbar: bool = True,
         _autocalc: bool = True,
@@ -70,6 +70,8 @@ class FLayer(IonLayer):
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
+        # TODO: Add depedency on instrument height
+        #TODO: Fix low frequency cutoff calculation
         freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
