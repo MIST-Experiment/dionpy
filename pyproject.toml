@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.99.0"
+version = "0.99.1"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -11,27 +11,15 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.7, <3.12"
+python = ">=3.8, <3.12"
 
-numpy = [
-    {version = "^1.21", python = "~3.7"},
-    {version = "^1.22", python = "^3.8"},
-]
+numpy = "^1.22"
 h5py = "^3.6.0"
 pymap3d = "^2.8.0"
 tqdm = "^4.64.0"
-scipy = [
-    {version = "^1.7", python = "~3.7"},
-    {version = "^1.8", python = "^3.8"},
-]
-astropy = [
-    {version = "^4.3", python = "~3.7"},
-    {version = "^5.1", python = "^3.8"},
-]
-matplotlib = [
-    {version = "^3.5.0", python = "~3.7"},
-    {version = "^3.6.0", python = "^3.8"},
-]
+scipy = "^1.8"
+astropy = "^5.1"
+matplotlib = "^3.6.0"
 pytz = "^2022.1"
 it = "^1.0.0"
 jupyter = "^1.0.0"
@@ -53,6 +41,7 @@ deepdish = "^0.3.7"
 pydarnio = "^1.1.1"
 pydarn = "^3.0"
 iri2016 = "^1.11.1"
+qrcode = {extras = ["pil"], version = "^7.3.1"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

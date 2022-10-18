@@ -7,6 +7,7 @@ from typing import Tuple
 import numpy as np
 from matplotlib import colormaps
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 plot_kwargs = {
     "dt": "Datetime object representing a time of an observation. If None - will not be specified under plot.",
@@ -91,8 +92,13 @@ def polar_plot(
         shading="auto",
     )
     ax.grid(color="gray", linestyle=":")
-    ax.set_theta_zero_location("S")
+    ax.set_theta_zero_location("N")
+    rfmt = lambda x_, _: f"{x_}°"
+    ax.yaxis.set_major_formatter(FuncFormatter(rfmt))
     ax.set_rticks([90, 60, 30, 0], Fontsize=30)
+    ax.set_theta_direction(-1)
+    # pos = ax.get_rlabel_position()
+    # ax.set_rlabel_position()
     ax.tick_params(axis="both", which="major", labelsize=11)
     ax.tick_params(axis="y", which="major", labelcolor="gray")
     plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat).set_label(

@@ -4,9 +4,10 @@ import itertools
 import os
 import shutil
 import tempfile
+import warnings
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable
+from typing import Tuple, Callable, List
 
 import h5py
 import numpy as np
@@ -47,7 +48,7 @@ class IonFrame:
     def __init__(
         self,
         dt: datetime,
-        position: Tuple[float, float, float],
+        position: List[float, float, float],
         nside: int = 64,
         dbot: float = 60,
         dtop: float = 90,
@@ -63,6 +64,10 @@ class IonFrame:
             self.dt = dt
         else:
             raise ValueError("Parameter dt must be a datetime object.")
+        if position[2] != 0:
+            position[2] = 0
+            warnings.warn("The current model does not support non zero altitude in instrument position. Setting "
+                          "instrument altitude to zero.", RuntimeWarning, stacklevel=2)
         self.position = position
         self.nside = nside
         self.iriversion = iriversion
@@ -392,12 +397,11 @@ class IonFrame:
     def _freq_animation(
         self,
         func: Callable,
-        name: str,
+        saveto: str,
         freqrange: Tuple[float, float] = (45, 125),
         gridsize: int = 200,
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         title: str | None = None,
         barlabel: str | None = None,
         plotlabel: str | None = None,
@@ -424,53 +428,56 @@ class IonFrame:
         nproc = np.min([cpu_count(), len(freqs)])
         plot_data = [(np.deg2rad(az), 90 - el, data[i]) for i in range(len(data))]
         plot_saveto = [os.path.join(tmpdir, str(i).zfill(6)) for i in range(len(data))]
-        with Pool(processes=nproc) as pool:
-            list(
-                tqdm(
-                    pool.imap(
-                        polar_plot_star,
-                        zip(
-                            plot_data,
-                            itertools.repeat(self.dt),
-                            itertools.repeat(self.position),
-                            freqs,
-                            itertools.repeat(title),
-                            itertools.repeat(barlabel),
-                            itertools.repeat(plotlabel),
-                            itertools.repeat((cbmin, cbmax)),
-                            plot_saveto,
-                            itertools.repeat(dpi),
-                            itertools.repeat(cmap),
-                            itertools.repeat(cbformat),
+        try:
+            with Pool(processes=nproc) as pool:
+                list(
+                    tqdm(
+                        pool.imap(
+                            polar_plot_star,
+                            zip(
+                                plot_data,
+                                itertools.repeat(self.dt),
+                                itertools.repeat(self.position),
+                                freqs,
+                                itertools.repeat(title),
+                                itertools.repeat(barlabel),
+                                itertools.repeat(plotlabel),
+                                itertools.repeat((cbmin, cbmax)),
+                                plot_saveto,
+                                itertools.repeat(dpi),
+                                itertools.repeat(cmap),
+                                itertools.repeat(cbformat),
+                            ),
                         ),
-                    ),
-                    desc="[2/3] Rendering frames",
-                    total=len(freqs),
+                        desc="[2/3] Rendering frames",
+                        total=len(freqs),
+                    )
                 )
-            )
-        desc = "[3/3] Rendering video"
-        pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
 
-        shutil.rmtree(tmpdir)
+            desc = "[3/3] Rendering video"
+            pic2vid(tmpdir, saveto, fps=fps, desc=desc)
+        except Exception as e:
+            shutil.rmtree(tmpdir)
+            print(e)
+        else:
+            shutil.rmtree(tmpdir)
         return
 
     def animate_atten_vs_freq(
         self,
-        name: str,
+        saveto: str,
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         **kwargs,
     ):
         """
         Generates an animation of attenuation change with frequency.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
-        :param savedir: Path to directory for file saving.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
@@ -487,32 +494,29 @@ class IonFrame:
 
     def animate_refr_vs_freq(
         self,
-        name,
+        saveto: str,
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         cmap="viridis_r",
         **kwargs,
     ):
         """
         Generates an animation of refraction angle change with frequency.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
-        :param savedir: Path to directory for file saving.
         :param cmap: Matplotlib colormap to use in plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
             self.refr,
-            name,
+            saveto,
             freqrange=freqrange,
             fps=fps,
             duration=duration,
-            savedir=savedir,
             pbar_label="F layer refraction",
             barlabel=r"deg",
             cmap=cmap,

@@ -94,7 +94,7 @@ class IonLayer:
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
         """
-        batch = 500
+        batch = 200
         nbatches = len(self._obs_pixels) // batch + 1
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)

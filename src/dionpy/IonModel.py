@@ -6,7 +6,8 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import Tuple, List, Callable
+from typing import List, Callable
+import warnings
 
 import numpy as np
 from numpy import ndarray
@@ -45,7 +46,7 @@ class IonModel:
             self,
             dt_start: datetime,
             dt_end: datetime,
-            position: Tuple[float, float, float],
+            position: List[float, float, float],
             fph: int = 4,
             nside: int = 64,
             dbot: float = 60,
@@ -59,6 +60,11 @@ class IonModel:
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
             raise ValueError("Parameters dt_start and dt_end must be datetime objects.")
+        if position[2] != 0:
+            position[2] = 0
+            warnings.warn("The current model does not support non zero altitude in instrument position. Setting "
+                          "instrument altitude to zero.", RuntimeWarning, stacklevel=2)
+
         self.dt_start = dt_start
         self.dt_end = dt_end
         nhours = (dt_end - dt_start).total_seconds() / 3600
@@ -462,12 +468,11 @@ class IonModel:
     def _time_animation(
             self,
             func: Callable,
-            name: str,
+            saveto: str,
             freq: float | None = None,
             gridsize: int = 100,
             fps: int = 20,
             duration: int = 5,
-            savedir: str = "animations/",
             title: str | None = None,
             barlabel: str | None = None,
             plotlabel: str | None = None,
@@ -503,60 +508,69 @@ class IonModel:
         nproc = np.min([cpu_count(), len(dts)])
         plot_data = [(np.deg2rad(az), 90 - el, data[i]) for i in range(len(data))]
         plot_saveto = [os.path.join(tmpdir, str(i).zfill(6)) for i in range(len(data))]
-        with Pool(processes=nproc) as pool:
-            list(
-                tqdm(
-                    pool.imap(
-                        polar_plot_star,
-                        zip(
-                            plot_data,
-                            dts,
-                            itertools.repeat(self.position),
-                            itertools.repeat(freq),
-                            itertools.repeat(title),
-                            itertools.repeat(barlabel),
-                            itertools.repeat(plotlabel),
-                            itertools.repeat((cbmin, cbmax)),
-                            plot_saveto,
-                            itertools.repeat(dpi),
-                            itertools.repeat(cmap),
-                            itertools.repeat(None),
-                            itertools.repeat(nancolor),
-                            itertools.repeat(infcolor),
-                            itertools.repeat(local_time),
+        try:
+            with Pool(processes=nproc) as pool:
+                list(
+                    tqdm(
+                        pool.imap(
+                            polar_plot_star,
+                            zip(
+                                plot_data,
+                                dts,
+                                itertools.repeat(self.position),
+                                itertools.repeat(freq),
+                                itertools.repeat(title),
+                                itertools.repeat(barlabel),
+                                itertools.repeat(plotlabel),
+                                itertools.repeat((cbmin, cbmax)),
+                                plot_saveto,
+                                itertools.repeat(dpi),
+                                itertools.repeat(cmap),
+                                itertools.repeat(None),
+                                itertools.repeat(nancolor),
+                                itertools.repeat(infcolor),
+                                itertools.repeat(local_time),
+                            ),
                         ),
-                    ),
-                    desc="[2/3] Rendering frames",
-                    total=len(dts),
+                        desc="[2/3] Rendering frames",
+                        total=len(dts),
+                    )
                 )
-            )
-        desc = "[3/3] Rendering video"
-        pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
 
-        shutil.rmtree(tmpdir)
+                desc = "[3/3] Rendering video"
+                pic2vid(tmpdir, saveto, fps=fps, desc=desc)
+        except Exception:
+            pass
+
+        except Exception as e:
+            shutil.rmtree(tmpdir)
+            print(e)
+        else:
+            shutil.rmtree(tmpdir)
         return
 
-    def animate_atten_vs_time(self, name: str, freq: float, **kwargs):
+
+    def animate_atten_vs_time(self, saveto: str, freq: float, **kwargs):
         """
         Generates an animation of attenuation factor change with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param freq: Frequency of observation.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._time_animation(
             self.atten,
-            name,
+            saveto,
             freq=freq,
             pbar_label="D layer attenuation",
             **kwargs,
         )
 
-    def animate_refr_vs_time(self, name: str, freq: float, cmap: str = "viridis_r", **kwargs):
+    def animate_refr_vs_time(self, saveto: str, freq: float, cmap: str = "viridis_r", **kwargs):
         """
         Generates an animation of refraction angle change with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param freq: Frequency of observation.
         :param cmap: Matplotlib colormap to use in plot.
         :param kwargs: See `dionpy.plot_kwargs`.
@@ -564,7 +578,7 @@ class IonModel:
         barlabel = r"$deg$"
         self._time_animation(
             self.refr,
-            name,
+            saveto,
             freq=freq,
             barlabel=barlabel,
             pbar_label="F layer refraction",
@@ -572,65 +586,65 @@ class IonModel:
             **kwargs,
         )
 
-    def animate_ded_vs_time(self, name: str, **kwargs):
+    def animate_ded_vs_time(self, saveto: str, **kwargs):
         """
         Generates an animation of change of electron temperature in the D layer with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
             self.ded,
-            name,
+            saveto,
             barlabel=barlabel,
             pbar_label="D layer electron density",
             **kwargs,
         )
 
-    def animate_det_vs_time(self, name: str, **kwargs):
+    def animate_det_vs_time(self, saveto: str, **kwargs):
         """
         Generates an animation of change of electron density in the D layer with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(
             self.det,
-            name,
+            saveto,
             barlabel=barlabel,
             pbar_label="D layer electron temperature",
             **kwargs,
         )
 
-    def animate_fed_vs_time(self, name: str, **kwargs):
+    def animate_fed_vs_time(self, saveto: str, **kwargs):
         """
         Generates an animation of change of electron density in the F layer with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$m^{-3}$"
         self._time_animation(
             self.fed,
-            name,
+            saveto,
             barlabel=barlabel,
             pbar_label="F layer electron density",
             **kwargs,
         )
 
-    def animate_fet_vs_time(self, name: str, **kwargs):
+    def animate_fet_vs_time(self, saveto: str, **kwargs):
         """
         Generates an animation of change of electron temperature in the F layer with time.
 
-        :param name: Name of file.
+        :param saveto: Path to save a file including name.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         barlabel = r"$^\circ K$"
         self._time_animation(
             self.fet,
-            name,
+            saveto,
             barlabel=barlabel,
             pbar_label="F layer electron temperature",
             **kwargs,
