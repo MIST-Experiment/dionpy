@@ -189,6 +189,8 @@ For the F-layer refraction
 
 Low frequency cut-off
 ~~~~~~~~~~~~~~~~~~~~~
+Warning! This concept is under investigation. It can change in the future.
+
 Wave propagation can be described by wave vector :math:`\vec{k}`
 
 .. math::
@@ -219,6 +221,8 @@ Low frequency reflection
     :align: center
 
     Low frequency reflection.
+
+Warning! This concept is under investigation. It can change in the future.
 
 The effect of ionospheric refraction increases as the frequency of a signal decreases. For very low frequencies it is
 possible that at some point the signal will reach the next sub-layer at :math:`\pi/2` angle. In this case, the signal will

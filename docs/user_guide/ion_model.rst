@@ -1,4 +1,0 @@
-Ionosphere model
-----------------
-
-text

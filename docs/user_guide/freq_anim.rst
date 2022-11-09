@@ -1,4 +1,0 @@
-Frequency animation
--------------------
-
-text
