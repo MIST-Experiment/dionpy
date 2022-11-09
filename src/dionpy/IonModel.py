@@ -14,7 +14,7 @@ from numpy import ndarray
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
-from .modules.helpers import elaz_mesh, TextColor, pic2vid
+from .modules.helpers import elaz_mesh, TextColor, pic2vid, get_atten_from_frame, get_refr_from_frame
 from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
 from .modules.plotting import polar_plot_star
 
@@ -28,7 +28,7 @@ class IonModel:
     :param dt_end: End date/time of the model.
     :param position: Geographical position of an observer. Must be a tuple containing
                      latitude [deg], longitude [deg], and elevation [m].
-    :param fph: Number of frames per hour.
+    :param mpf: Number of minutes per frame.
     :param nside: Resolution of healpix grid.
     :param dbot: Lower limit in [km] of the D layer of the ionosphere.
     :param dtop: Upper limit in [km] of the D layer of the ionosphere.
@@ -47,7 +47,7 @@ class IonModel:
             dt_start: datetime,
             dt_end: datetime,
             position: List[float, float, float],
-            fph: int = 4,
+            mpf: int = 15,
             nside: int = 64,
             dbot: float = 60,
             dtop: float = 90,
@@ -68,7 +68,7 @@ class IonModel:
         self.dt_start = dt_start
         self.dt_end = dt_end
         nhours = (dt_end - dt_start).total_seconds() / 3600
-        nmodels = int(nhours * fph)
+        nmodels = int(nhours * 60 / mpf)
         tdelta = timedelta(hours=nhours / nmodels)
         self._dts = np.asarray(
             [dt_start + tdelta * i for i in range(nmodels + 1)]
@@ -82,7 +82,7 @@ class IonModel:
         self.nflayers = nflayers
 
         self.position = position
-        self.fph = fph
+        self.mpf = mpf
         self.nside = nside
         self.iriversion = iriversion
         self.models = []
@@ -105,38 +105,30 @@ class IonModel:
                     )
                 )
 
-    def save(self, directory: str = None, name: str = None):
+    def save(self, saveto: str = "./ionmodel"):
         """
         Save the model to a file.
 
-        :param directory: Path to directory to save the model.
-        :param name: Name of the file (extension is not required).
+        :param saveto: Path to directory with name to save the model.
         """
         import h5py
 
-        filename = (
-                f"ionmodel_{self.dt_start.year:04d}{self.dt_start.month:02d}"
-                + f"{self.dt_start.day:02d}{self.dt_start.hour:02d}"
-                + f"{self.dt_start.minute:02d}{self.dt_end.year:04d}"
-                + f"{self.dt_end.month:02d}{self.dt_end.day:02d}"
-                + f"{self.dt_end.hour:02d}{self.dt_end.minute:02d}"
-        )
-        directory = directory or "ion_models/"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        name = name or filename
-        name = os.path.join(directory, name)
-        if not name.endswith(".h5"):
-            name += ".h5"
 
-        file = h5py.File(name, mode="w")
+        head, tail = os.path.split(saveto)
+        if not os.path.exists(head) and len(head) > 0:
+            os.makedirs(head)
+
+        if not saveto.endswith(".h5"):
+            saveto += ".h5"
+
+        file = h5py.File(saveto, mode="w")
 
         meta = file.create_dataset("meta", shape=(0,))
         meta.attrs["position"] = self.position
         meta.attrs["dt_start"] = self.dt_start.strftime("%Y-%m-%d %H:%M")
         meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
         meta.attrs["nside"] = self.nside
-        meta.attrs["fph"] = self.fph
+        meta.attrs["mpf"] = self.mpf
         meta.attrs["dbot"] = self.dbot
         meta.attrs["dtop"] = self.dtop
         meta.attrs["nlayers"] = self.ndlayers
@@ -180,7 +172,7 @@ class IonModel:
                 dt_end=datetime.strptime(meta.attrs["dt_end"], "%Y-%m-%d %H:%M"),
                 position=meta.attrs["position"],
                 nside=meta.attrs["nside"],
-                fph=meta.attrs["fph"],
+                mpf=meta.attrs["mpf"],
                 dbot=meta.attrs["dbot"],
                 dtop=meta.attrs["dtop"],
                 ndlayers=meta.attrs["nlayers"],
@@ -234,86 +226,6 @@ class IonModel:
             dt1, dt2 = self._dts[idx]
             funcs = [funcs[idx[0]], funcs[idx[1]]]
             return calc_interp_val(el, az, funcs, [dt1, dt2, dt], *args, **kwargs)
-
-    def ded(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            layer: int | None = None,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores.
-        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Electron density in [m^-3] in the D layer of the ionosphere.
-        """
-        funcs = [m.dlayer.ed for m in self.models]
-        return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
-
-    def det(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            layer: int | None = None,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores.
-        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Electron temperature in [K] in the D layer of the ionosphere.
-        """
-        funcs = [m.dlayer.et for m in self.models]
-        return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
-
-    def fed(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            layer: int | None = None,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores.
-        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Electron density in [m^-3] in the F layer of the ionosphere.
-        """
-        funcs = [m.flayer.ed for m in self.models]
-        return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
-
-    def fet(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            layer: int = None,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores.
-        :param layer: A number of sublayer to calculate. If None - an average value over all layers will be calculated.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Electron temperature in [K] in the F layer of the ionosphere.
-        """
-        funcs = [m.flayer.et for m in self.models]
-        return self._parallel_calc(el, az, dt, funcs, _pbar_desc, layer=layer)
 
     def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
         """
@@ -404,7 +316,7 @@ class IonModel:
             nancolor: str = "black",
             infcolor: str = "white",
             local_time: int | None = None,
-            codec: str = "libx265",
+            codec: str = "libx264",
     ):
         """
         Abstract method for generating animations.
@@ -420,48 +332,61 @@ class IonModel:
         el, az = elaz_mesh(gridsize)
         nframes = duration * fps
         dts = self._nframes2dts(nframes)
-        extra_args = [arg for arg in [freq] if arg is not None]
-        data = np.array(
-            func(el, az, dts, *extra_args, _pbar_desc="[1/3] Calculating data")
-        )
+        frames = [self.at(dt_) for dt_ in dts]
+        nproc = np.min([cpu_count(), len(dts)])
+        pool = Pool(processes=nproc)
+        data = np.array(list(
+            tqdm(
+                pool.imap(
+                    func,
+                    zip(
+                        frames,
+                        itertools.repeat(el),
+                        itertools.repeat(az),
+                        itertools.repeat(freq),
+                    ),
+                ),
+                desc="[1/3] Calculating data",
+                total=len(dts),
+            )
+        ))
 
         cbmin, cbmax = np.nanmin(data[data != -np.inf]), np.nanmax(data[data != np.inf])
-
         tmpdir = tempfile.mkdtemp()
-        nproc = np.min([cpu_count(), len(dts)])
         plot_data = [(np.deg2rad(az), 90 - el, data[i]) for i in range(len(data))]
         plot_saveto = [os.path.join(tmpdir, str(i).zfill(6)) for i in range(len(data))]
-        try:
-            with Pool(processes=nproc) as pool:
-                list(
-                    tqdm(
-                        pool.imap(
-                            polar_plot_star,
-                            zip(
-                                plot_data,
-                                dts,
-                                itertools.repeat(self.position),
-                                itertools.repeat(freq),
-                                itertools.repeat(title),
-                                itertools.repeat(barlabel),
-                                itertools.repeat(plotlabel),
-                                itertools.repeat((cbmin, cbmax)),
-                                plot_saveto,
-                                itertools.repeat(dpi),
-                                itertools.repeat(cmap),
-                                itertools.repeat(None),
-                                itertools.repeat(nancolor),
-                                itertools.repeat(infcolor),
-                                itertools.repeat(local_time),
-                            ),
-                        ),
-                        desc="[2/3] Rendering frames",
-                        total=len(dts),
-                    )
-                )
+        del data
 
-                desc = "[3/3] Rendering video"
-                pic2vid(tmpdir, saveto, fps=fps, desc=desc)
+        try:
+            list(
+                tqdm(
+                    pool.imap(
+                        polar_plot_star,
+                        zip(
+                            plot_data,
+                            dts,
+                            itertools.repeat(self.position),
+                            itertools.repeat(freq),
+                            itertools.repeat(title),
+                            itertools.repeat(barlabel),
+                            itertools.repeat(plotlabel),
+                            itertools.repeat((cbmin, cbmax)),
+                            plot_saveto,
+                            itertools.repeat(dpi),
+                            itertools.repeat(cmap),
+                            itertools.repeat(None),
+                            itertools.repeat(nancolor),
+                            itertools.repeat(infcolor),
+                            itertools.repeat(local_time),
+                        ),
+                    ),
+                    desc="[2/3] Rendering frames",
+                    total=len(dts),
+                )
+            )
+            del plot_data
+            desc = "[3/3] Rendering video"
+            pic2vid(tmpdir, saveto, fps=fps, desc=desc, codec=codec)
 
         except Exception as e:
             shutil.rmtree(tmpdir)
@@ -470,8 +395,7 @@ class IonModel:
             shutil.rmtree(tmpdir)
         return
 
-
-    def animate_atten_vs_time(self, saveto: str, freq: float, **kwargs):
+    def animate_atten_vs_time(self, freq: float, saveto: str = "./atten_vs_time", **kwargs):
         """
         Generates an animation of attenuation factor change with time.
 
@@ -480,14 +404,14 @@ class IonModel:
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._time_animation(
-            self.atten,
+            get_atten_from_frame,
             saveto,
             freq=freq,
             pbar_label="D layer attenuation",
             **kwargs,
         )
 
-    def animate_refr_vs_time(self, saveto: str, freq: float, cmap: str = "viridis_r", **kwargs):
+    def animate_refr_vs_time(self, freq: float, saveto: str = "./refr_vs_time", cmap: str = "viridis_r", **kwargs):
         """
         Generates an animation of refraction angle change with time.
 
@@ -498,7 +422,7 @@ class IonModel:
         """
         barlabel = r"$deg$"
         self._time_animation(
-            self.refr,
+            get_refr_from_frame,
             saveto,
             freq=freq,
             barlabel=barlabel,

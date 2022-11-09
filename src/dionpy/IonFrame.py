@@ -169,22 +169,19 @@ class IonFrame:
             grp.create_dataset("fedens", data=self.flayer.edens)
             grp.create_dataset("fetemp", data=self.flayer.etemp)
 
-    def save(self, savedir: str = "ion_models/", name: str | None = None):
+    def save(self, saveto: str = "./ionframe"):
         """
         Save the model to HDF file.
 
-        :param savedir: Path to directory.
-        :param name: Name of the file. If None - the name is created automatically as
-                     "year[04]month[02]day[02]hour[042]minute[02]".
+        :param saveto: Path and name of the file.
         """
-        os.makedirs(savedir, exist_ok=True)
-        filename = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
-        name = name or filename
-        name = os.path.join(savedir, name)
-        if not name.endswith(".h5"):
-            name += ".h5"
+        head, tail = os.path.split(saveto)
+        if not os.path.exists(head) and len(head) > 0:
+            os.makedirs(head)
+        if not saveto.endswith(".h5"):
+            saveto += ".h5"
 
-        file = h5py.File(name, mode="w")
+        file = h5py.File(saveto, mode="w")
         self.write_self_to_file(file)
         file.close()
 
@@ -392,12 +389,11 @@ class IonFrame:
     def _freq_animation(
         self,
         func: Callable,
-        name: str,
+        saveto: str,
         freqrange: Tuple[float, float] = (45, 125),
         gridsize: int = 200,
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         title: str | None = None,
         barlabel: str | None = None,
         plotlabel: str | None = None,
@@ -451,7 +447,7 @@ class IonFrame:
                 )
 
             desc = "[3/3] Rendering video"
-            pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
+            pic2vid(tmpdir, saveto, fps=fps, desc=desc)
         except Exception as e:
             shutil.rmtree(tmpdir)
             print(e)
@@ -461,30 +457,27 @@ class IonFrame:
 
     def animate_atten_vs_freq(
         self,
-        name: str,
+        saveto: str = "./atten_vs_freq",
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         **kwargs,
     ):
         """
         Generates an animation of attenuation change with frequency.
 
-        :param name: Name of file.
+        :param saveto: Path and name of file.
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
-        :param savedir: Path to directory for file saving.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
             self.atten,
-            name,
+            saveto=saveto,
             freqrange=freqrange,
             fps=fps,
             duration=duration,
-            savedir=savedir,
             pbar_label="D layer attenuation",
             cbformat="%.3f",
             **kwargs,
@@ -492,32 +485,29 @@ class IonFrame:
 
     def animate_refr_vs_freq(
         self,
-        name,
+        saveto: str = "./refr_vs_freq",
         freqrange: Tuple[float, float] = (45, 125),
         fps: int = 20,
         duration: int = 5,
-        savedir: str = "animations/",
         cmap="viridis_r",
         **kwargs,
     ):
         """
         Generates an animation of refraction angle change with frequency.
 
-        :param name: Name of file.
+        :param saveto: Path and name of file.
         :param freqrange: Frequency range of animation.
         :param fps: Frames per second.
         :param duration: Duration of animation in [s].
-        :param savedir: Path to directory for file saving.
         :param cmap: Matplotlib colormap to use in plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         """
         self._freq_animation(
             self.refr,
-            name,
+            saveto=saveto,
             freqrange=freqrange,
             fps=fps,
             duration=duration,
-            savedir=savedir,
             pbar_label="F layer refraction",
             barlabel=r"deg",
             cmap=cmap,

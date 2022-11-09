@@ -72,6 +72,7 @@ def polar_plot(
             plotlabel += f"Frequency: {freq:.1f} MHz"
 
     cblim = cblim or (np.nanmin(data[2][data[2] != -np.inf]), np.nanmax(data[2][data[2] != np.inf]))
+
     plot_data = np.where(np.isinf(data[2]), cblim[1]+1e8, data[2])
     if isinstance(cmap, str):
         cmap = colormaps[cmap]
@@ -97,8 +98,7 @@ def polar_plot(
     ax.yaxis.set_major_formatter(FuncFormatter(rfmt))
     ax.set_rticks([90, 60, 30, 0], Fontsize=30)
     ax.set_theta_direction(-1)
-    # pos = ax.get_rlabel_position()
-    # ax.set_rlabel_position()
+
     ax.tick_params(axis="both", which="major", labelsize=11)
     ax.tick_params(axis="y", which="major", labelcolor="gray")
     plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat).set_label(

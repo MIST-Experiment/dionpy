@@ -156,8 +156,7 @@ def eval_layer(
 
 def pic2vid(
     imdir: str,
-    vidname: str,
-    savedir: str = "animations",
+    saveto: str,
     fps: int = 20,
     desc: str | None = None,
     codec: str = "libx264",
@@ -165,14 +164,13 @@ def pic2vid(
     """
     Renders existing set of pictures to mp4 video.
     :param imdir: Location of images.
-    :param vidname: Name of the file to save.
-    :param savedir: Location of the file to save.
+    :param saveto: Path with name to where save the file.
     :param fps: Framerate - frames per second.
     :param desc: Description of a progressbar. If None - the progressbar will not appear.
     :param codec: Codec to use for video rendering.
     """
-    if not vidname.endswith(".mp4"):
-        vidname += ".mp4"
+    if not saveto.endswith(".mp4"):
+        saveto += ".mp4"
     desc = desc or "Rendering video"
     cmd = [
         "ffmpeg",
@@ -183,9 +181,17 @@ def pic2vid(
         "-vcodec",
         codec,
         "-y",
-        os.path.join(savedir, vidname),
+        saveto,
     ]
     ff = FfmpegProgress(cmd)
     with tqdm(total=100, position=0, desc=desc, leave=True) as pbar:
         for progress in ff.run_command_with_progress():
             pbar.update(progress - pbar.n)
+
+
+def get_atten_from_frame(args):
+    return args[0].atten(*args[1:])
+
+
+def get_refr_from_frame(args):
+    return args[0].refr(*args[1:])
