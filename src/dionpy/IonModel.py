@@ -321,6 +321,7 @@ class IonModel:
         """
         Abstract method for generating animations.
         """
+
         print(
             TextColor.BOLD
             + TextColor.BLUE
@@ -385,14 +386,15 @@ class IonModel:
                 )
             )
             del plot_data
+            pool.close()
             desc = "[3/3] Rendering video"
             pic2vid(tmpdir, saveto, fps=fps, desc=desc, codec=codec)
 
         except Exception as e:
-            shutil.rmtree(tmpdir)
+            pool.close()
             print(e)
-        else:
-            shutil.rmtree(tmpdir)
+
+        shutil.rmtree(tmpdir)
         return
 
     def animate_atten_vs_time(self, freq: float, saveto: str = "./atten_vs_time", **kwargs):
