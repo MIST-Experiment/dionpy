@@ -105,8 +105,8 @@ class IonFrame:
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
-        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on all
-                     available cores. Requires `dt` to be a single datetime object.
+        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on
+                     all available cores. Requires `dt` to be a single datetime object.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
@@ -424,34 +424,39 @@ class IonFrame:
         nproc = np.min([cpu_count(), len(freqs)])
         plot_data = [(np.deg2rad(az), 90 - el, data[i]) for i in range(len(data))]
         plot_saveto = [os.path.join(tmpdir, str(i).zfill(6)) for i in range(len(data))]
-        with Pool(processes=nproc) as pool:
-            list(
-                tqdm(
-                    pool.imap(
-                        polar_plot_star,
-                        zip(
-                            plot_data,
-                            itertools.repeat(self.dt),
-                            itertools.repeat(self.position),
-                            freqs,
-                            itertools.repeat(title),
-                            itertools.repeat(barlabel),
-                            itertools.repeat(plotlabel),
-                            itertools.repeat((cbmin, cbmax)),
-                            plot_saveto,
-                            itertools.repeat(dpi),
-                            itertools.repeat(cmap),
-                            itertools.repeat(cbformat),
+        try:
+            with Pool(processes=nproc) as pool:
+                list(
+                    tqdm(
+                        pool.imap(
+                            polar_plot_star,
+                            zip(
+                                plot_data,
+                                itertools.repeat(self.dt),
+                                itertools.repeat(self.position),
+                                freqs,
+                                itertools.repeat(title),
+                                itertools.repeat(barlabel),
+                                itertools.repeat(plotlabel),
+                                itertools.repeat((cbmin, cbmax)),
+                                plot_saveto,
+                                itertools.repeat(dpi),
+                                itertools.repeat(cmap),
+                                itertools.repeat(cbformat),
+                            ),
                         ),
-                    ),
-                    desc="[2/3] Rendering frames",
-                    total=len(freqs),
+                        desc="[2/3] Rendering frames",
+                        total=len(freqs),
+                    )
                 )
-            )
-        desc = "[3/3] Rendering video"
-        pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
 
-        shutil.rmtree(tmpdir)
+            desc = "[3/3] Rendering video"
+            pic2vid(tmpdir, name, fps=fps, desc=desc, savedir=savedir)
+        except Exception as e:
+            shutil.rmtree(tmpdir)
+            print(e)
+        else:
+            shutil.rmtree(tmpdir)
         return
 
     def animate_atten_vs_freq(

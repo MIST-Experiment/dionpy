@@ -88,7 +88,7 @@ def sky2ll(
     :return: Observable geographical latitude and longitude.
     """
     d_srange = srange(np.deg2rad(90 - el), height * 1e3)
-    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, Ellipsoid())
+    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, ell=Ellipsoid())
     return obs_lat, obs_lon
 
 
@@ -160,6 +160,7 @@ def pic2vid(
     savedir: str = "animations",
     fps: int = 20,
     desc: str | None = None,
+    codec: str = "libx264",
 ):
     """
     Renders existing set of pictures to mp4 video.
@@ -168,6 +169,7 @@ def pic2vid(
     :param savedir: Location of the file to save.
     :param fps: Framerate - frames per second.
     :param desc: Description of a progressbar. If None - the progressbar will not appear.
+    :param codec: Codec to use for video rendering.
     """
     if not vidname.endswith(".mp4"):
         vidname += ".mp4"
@@ -179,7 +181,7 @@ def pic2vid(
         "-i",
         os.path.join(imdir, "%06d.png"),
         "-vcodec",
-        "libx265",
+        codec,
         "-y",
         os.path.join(savedir, vidname),
     ]
