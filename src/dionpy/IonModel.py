@@ -14,7 +14,7 @@ from numpy import ndarray
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
-from .modules.helpers import elaz_mesh, TextColor, pic2vid, is_iterable
+from .modules.helpers import elaz_mesh, TextColor, pic2vid
 from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
 from .modules.plotting import polar_plot_star
 
@@ -356,99 +356,21 @@ class IonModel:
                 self._dts[idx[1]],
                 dt,
             )
-            obj.flayer.f_e_density = interp_val(
-                self.models[idx[0]].flayer.f_e_density,
-                self.models[idx[1]].flayer.f_e_density,
+            obj.flayer.edens = interp_val(
+                self.models[idx[0]].flayer.edens,
+                self.models[idx[1]].flayer.edens,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
             )
-            obj.flayer.f_e_temp = interp_val(
-                self.models[idx[0]].flayer.f_e_temp,
-                self.models[idx[1]].flayer.f_e_temp,
+            obj.flayer.etemp = interp_val(
+                self.models[idx[0]].flayer.etemp,
+                self.models[idx[1]].flayer.etemp,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
             )
             return obj
-
-    def atten(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            freq: float | np.ndarray,
-            col_freq: str = "default",
-            troposphere: bool = True,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores. Requires `freq` to be a single float.
-        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
-                     available cores. Requires `dt` to be a single datetime object.
-        :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
-                         or float in Hz.
-        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
-                 attenuation factor between 0 (total attenuation) and 1 (no attenuation).
-        """
-        if is_iterable(freq) and not is_iterable(dt):
-            model = self.at(dt)
-            return model.atten(el, az, freq, _pbar_desc=_pbar_desc, col_freq=col_freq, troposphere=troposphere)
-        elif is_iterable(dt) and not is_iterable(freq):
-            funcs = [m.dlayer.atten for m in self.models]
-            return self._parallel_calc(
-                el,
-                az,
-                dt,
-                funcs,
-                _pbar_desc,
-                freq,
-                col_freq=col_freq,
-                troposphere=troposphere,
-            )
-        else:
-            raise ValueError("Both datetime and frequency cannot be iterables at the same call.")
-
-    def refr(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime],
-            freq: float | np.ndarray,
-            troposphere: bool = True,
-            _pbar_desc: str | None = None,
-    ) -> float | np.ndarray:
-        """
-        :param el: Elevation of observation(s) in [deg].
-        :param az: Azimuth of observation(s) in [deg].
-        :param dt: Datetime of observation(s). If list - the calculation will be performed in parallel on all available
-                   cores. Requires `freq` to be a single float.
-        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
-                     available cores. Requires `dt` to be a single datetime object.
-        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
-        :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
-        :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
-        """
-        funcs = [m.flayer.refr for m in self.models]
-        return self._parallel_calc(
-            el, az, dt, funcs, _pbar_desc, freq, troposphere=troposphere
-        )
-
-    @staticmethod
-    def troprefr(el: float | np.ndarray) -> float | np.ndarray:
-        """
-        Approximation of the refraction in the troposphere recommended by the ITU-R:
-        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-7-201510-S!!PDF-E.pdf
-
-        :param el: Elevation of observation(s) in [deg].
-        :return: Refraction in the troposphere in [deg].
-        """
-        return IonFrame.troprefr(el)
 
     def _nframes2dts(self, nframes: int | None) -> ndarray:
         """
@@ -482,6 +404,7 @@ class IonModel:
             nancolor: str = "black",
             infcolor: str = "white",
             local_time: int | None = None,
+            codec: str = "libx265",
     ):
         """
         Abstract method for generating animations.
@@ -539,8 +462,6 @@ class IonModel:
 
                 desc = "[3/3] Rendering video"
                 pic2vid(tmpdir, saveto, fps=fps, desc=desc)
-        except Exception:
-            pass
 
         except Exception as e:
             shutil.rmtree(tmpdir)
@@ -583,69 +504,5 @@ class IonModel:
             barlabel=barlabel,
             pbar_label="F layer refraction",
             cmap=cmap,
-            **kwargs,
-        )
-
-    def animate_ded_vs_time(self, saveto: str, **kwargs):
-        """
-        Generates an animation of change of electron temperature in the D layer with time.
-
-        :param saveto: Path to save a file including name.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        barlabel = r"$m^{-3}$"
-        self._time_animation(
-            self.ded,
-            saveto,
-            barlabel=barlabel,
-            pbar_label="D layer electron density",
-            **kwargs,
-        )
-
-    def animate_det_vs_time(self, saveto: str, **kwargs):
-        """
-        Generates an animation of change of electron density in the D layer with time.
-
-        :param saveto: Path to save a file including name.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        barlabel = r"$^\circ K$"
-        self._time_animation(
-            self.det,
-            saveto,
-            barlabel=barlabel,
-            pbar_label="D layer electron temperature",
-            **kwargs,
-        )
-
-    def animate_fed_vs_time(self, saveto: str, **kwargs):
-        """
-        Generates an animation of change of electron density in the F layer with time.
-
-        :param saveto: Path to save a file including name.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        barlabel = r"$m^{-3}$"
-        self._time_animation(
-            self.fed,
-            saveto,
-            barlabel=barlabel,
-            pbar_label="F layer electron density",
-            **kwargs,
-        )
-
-    def animate_fet_vs_time(self, saveto: str, **kwargs):
-        """
-        Generates an animation of change of electron temperature in the F layer with time.
-
-        :param saveto: Path to save a file including name.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        barlabel = r"$^\circ K$"
-        self._time_animation(
-            self.fet,
-            saveto,
-            barlabel=barlabel,
-            pbar_label="F layer electron temperature",
             **kwargs,
         )
