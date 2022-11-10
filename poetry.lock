@@ -348,6 +348,14 @@ unicode = ["unicodedata2 (>=14.0.0)"]
 woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 
 [[package]]
+name = "fortranformat"
+version = "1.2.2"
+description = "Mimics Fortran textual IO in Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "h5py"
 version = "3.7.0"
 description = "Read and write HDF5 files from Python"
@@ -525,14 +533,15 @@ tests = ["pytest"]
 
 [[package]]
 name = "iricore"
-version = "1.1.6"
+version = "1.2.0"
 description = ""
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.12"
+python-versions = ">=3.8,<4.0"
 
 [package.dependencies]
-numpy = {version = ">=1.22,<2.0", markers = "python_version >= \"3.8\" and python_version < \"4.0\""}
+fortranformat = ">=1.2.2,<2.0.0"
+numpy = ">=1.23.4,<2.0.0"
 
 [[package]]
 name = "it"
@@ -662,7 +671,7 @@ test = ["ipykernel", "pre-commit", "pytest", "pytest-cov", "pytest-timeout"]
 
 [[package]]
 name = "jupyter-server"
-version = "1.23.0"
+version = "1.23.1"
 description = "=?utf-8?q?The_backend=E2=80=94i=2Ee=2E_core_services=2C_APIs=2C_and_REST_endpoints=E2=80=94to_Jupyter_web_applications=2E?="
 category = "main"
 optional = false
@@ -823,7 +832,7 @@ test = ["black", "check-manifest", "flake8", "ipykernel", "ipython", "ipywidgets
 
 [[package]]
 name = "nbconvert"
-version = "7.2.3"
+version = "7.2.4"
 description = "Converting Jupyter Notebooks"
 category = "main"
 optional = false
@@ -1842,7 +1851,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <3.12"
-content-hash = "7eeecbcaaa68ae9094959609b4b5709df21332999c13e0f6c8beb4acafde9e97"
+content-hash = "ff8692b012d24e6d04db95edd00688bbd51f9efb2c71aba85cc97e9d774cb66c"
 
 [metadata.files]
 aacgmv2 = [
@@ -2156,6 +2165,9 @@ fonttools = [
     {file = "fonttools-4.38.0-py3-none-any.whl", hash = "sha256:820466f43c8be8c3009aef8b87e785014133508f0de64ec469e4efb643ae54fb"},
     {file = "fonttools-4.38.0.zip", hash = "sha256:2bb244009f9bf3fa100fc3ead6aeb99febe5985fa20afbfbaa2f8946c2fbdaf1"},
 ]
+fortranformat = [
+    {file = "fortranformat-1.2.2.tar.gz", hash = "sha256:a8c41ab39bb40444e6ca17f38755d64df51799b064206833c137a28bbdca1b2b"},
+]
 h5py = [
     {file = "h5py-3.7.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d77af42cb751ad6cc44f11bae73075a07429a5cf2094dfde2b1e716e059b3911"},
     {file = "h5py-3.7.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:63beb8b7b47d0896c50de6efb9a1eaa81dbe211f3767e7dd7db159cea51ba37a"},
@@ -2225,8 +2237,8 @@ iri2016 = [
     {file = "iri2016-1.11.1.tar.gz", hash = "sha256:011629a4f05266429139833d9bf039ac6233a2ab0c3fc4885fb2af9b619b7835"},
 ]
 iricore = [
-    {file = "iricore-1.1.6-cp38-cp38-manylinux_2_31_x86_64.whl", hash = "sha256:5ae6614e2b749bfb20c7ef1687841af046b45306a0bccf4f68911b77d7f46968"},
-    {file = "iricore-1.1.6.tar.gz", hash = "sha256:905fac213e73a9201e48ea293d34d17c1313eb8e1355b0576d64b37a5ea78907"},
+    {file = "iricore-1.2.0-cp310-cp310-manylinux_2_35_x86_64.whl", hash = "sha256:ee58bde9a33d3dc57107bf61e66b9579ca816966a3e2f9951e564daccbbdcaa2"},
+    {file = "iricore-1.2.0.tar.gz", hash = "sha256:10160b59a0d32759878dfdb22e607e39284452a921080a8e426e6440880bbf1c"},
 ]
 it = [
     {file = "it-1.0.0.tar.gz", hash = "sha256:a1e1ab603798ebc895333f3753019a4be34a73e8eda7dc5f911916889a838cb2"},
@@ -2261,8 +2273,8 @@ jupyter-core = [
     {file = "jupyter_core-5.0.0.tar.gz", hash = "sha256:4ed68b7c606197c7e344a24b7195eef57898157075a69655a886074b6beb7043"},
 ]
 jupyter-server = [
-    {file = "jupyter_server-1.23.0-py3-none-any.whl", hash = "sha256:0adbb94fc41bc5d7217a17c51003fea7d0defb87d8a6aff4b95fa45fa029e129"},
-    {file = "jupyter_server-1.23.0.tar.gz", hash = "sha256:45d706e049ca2486491b1bb459c04f34966a606018be5b16287c91e33689e359"},
+    {file = "jupyter_server-1.23.1-py3-none-any.whl", hash = "sha256:4bdcde2aa576b05da5cf89f33b7d97adcaea5cad4f5863a0db09dcc9eecd66bf"},
+    {file = "jupyter_server-1.23.1.tar.gz", hash = "sha256:cee48d9d96cecd0f94b7cb41ecd4f0ab05b01643769f61c5d397b7873bc9a1e2"},
 ]
 jupyterlab-pygments = [
     {file = "jupyterlab_pygments-0.2.2-py2.py3-none-any.whl", hash = "sha256:2405800db07c9f770863bcf8049a529c3dd4d3e28536638bd7c1c01d2748309f"},
@@ -2448,8 +2460,8 @@ nbclient = [
     {file = "nbclient-0.7.0.tar.gz", hash = "sha256:a1d844efd6da9bc39d2209bf996dbd8e07bf0f36b796edfabaa8f8a9ab77c3aa"},
 ]
 nbconvert = [
-    {file = "nbconvert-7.2.3-py3-none-any.whl", hash = "sha256:66326174c190dc4f0a6cbbff96f30c632774b441fa3c7565662bb3d41992fb0f"},
-    {file = "nbconvert-7.2.3.tar.gz", hash = "sha256:7ae7ccc68495b565dab153459ee7e65039970913eb115070da6e2c673cf0e9f8"},
+    {file = "nbconvert-7.2.4-py3-none-any.whl", hash = "sha256:ed6eb42c2700a1aa5253db25db932db789e3a1ee01e1adf004bfed13c56bff50"},
+    {file = "nbconvert-7.2.4.tar.gz", hash = "sha256:7bee39e41835642f84599c2841ea53f21f4099257102c07c09347202c3ef732a"},
 ]
 nbformat = [
     {file = "nbformat-5.7.0-py3-none-any.whl", hash = "sha256:1b05ec2c552c2f1adc745f4eddce1eac8ca9ffd59bb9fd859e827eaa031319f9"},

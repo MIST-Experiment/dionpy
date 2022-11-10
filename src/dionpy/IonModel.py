@@ -10,6 +10,7 @@ from typing import List, Callable
 import warnings
 
 import numpy as np
+from iricore import readapf107
 from numpy import ndarray
 from tqdm import tqdm
 
@@ -86,7 +87,13 @@ class IonModel:
         self.nside = nside
         self.iriversion = iriversion
         self.models = []
+
         if _autocalc:
+            nproc = np.min([cpu_count(), nmodels])
+            # nproc = 1
+            pool = Pool(processes=nproc)
+            apf107_args = readapf107(self.iriversion)
+
             for dt in tqdm(self._dts, desc="Calculating time frames"):
                 self.models.append(
                     IonFrame(
@@ -102,8 +109,11 @@ class IonModel:
                         iriversion,
                         _pbar=False,
                         _autocalc=_autocalc,
+                        _pool=pool,
+                        _apf107_args=apf107_args,
                     )
                 )
+            pool.close()
 
     def save(self, saveto: str = "./ionmodel"):
         """
@@ -112,7 +122,6 @@ class IonModel:
         :param saveto: Path to directory with name to save the model.
         """
         import h5py
-
 
         head, tail = os.path.split(saveto)
         if not os.path.exists(head) and len(head) > 0:

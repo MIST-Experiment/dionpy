@@ -29,7 +29,7 @@ sphinx-rtd-theme = "^1.0.0"
 sphinx-autodoc-typehints = "^1.19.1"
 ffmpeg-progress-yield = "^0.3.0"
 sphinxcontrib-bibtex = "^2.5.0"
-iricore = "^1.1.6"
+iricore = "1.2.0"
 
 
 

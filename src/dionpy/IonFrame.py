@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Union, List
 
 import h5py
 import numpy as np
@@ -58,6 +58,8 @@ class IonFrame:
         iriversion: int = 20,
         _pbar: bool = False,
         _autocalc: bool = True,
+        _pool: Union[Pool, None] = None,
+        _apf107_args: List | None = None
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -67,10 +69,10 @@ class IonFrame:
         self.nside = nside
         self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, iriversion, _pbar, _autocalc
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, iriversion, _pbar, _autocalc
+            dt, position, fbot, ftop, nflayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
         )
 
     @staticmethod

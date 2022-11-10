@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime
+from time import time
 from multiprocessing import cpu_count, Pool
-from typing import Tuple
+from typing import Tuple, List, Union
 
 import healpy as hp
 import iricore
@@ -47,6 +48,8 @@ class IonLayer:
         name: str | None = None,
         iriversion: int = 20,
         _autocalc: bool = True,
+        _pool: Union[Pool, None] = None,
+        _apf107_args: List | None = None,
     ):
         self.hbot = hbot
         self.htop = htop
@@ -69,32 +72,14 @@ class IonLayer:
         self.etemp = np.zeros((len(self._obs_pixels), nlayers))
 
         if _autocalc:
-            self._calc_par(pbar=pbar)
+            self._calc(pbar=pbar, _pool=_pool, _apf107_args=_apf107_args)
 
-    def _calc(self):
-        """
-        Makes a single call to iricore (assuming already implemented parallelism) requesting
-        electron density and electron temperature for future use in attenuation modeling.
-        """
-        heights = np.linspace(self.hbot, self.htop, self.nlayers)
-        for i in tqdm(range(self.nlayers)):
-            res = iricore.IRI(
-                self.dt,
-                [heights[i], heights[i], 1],
-                self._obs_lats,
-                self._obs_lons,
-                replace_missing=0,
-            )
-            self.edens[:, i] = res["ne"][:, 0]
-            self.etemp[:, i] = res["te"][:, 0]
-        return
-
-    def _calc_par(self, pbar=True):
+    def _calc(self, pbar=True, _pool: Union[Pool, None] = None, _apf107_args: List | None = None):
         """
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
         """
-        batch = 200
+        batch = 100
         nbatches = len(self._obs_pixels) // batch + 1
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
@@ -105,27 +90,43 @@ class IonLayer:
             (self.htop - self.hbot) / (self.nlayers - 1) - 1e-6,
         )
 
-        with Pool(processes=nproc) as pool:
-            res = list(
-                tqdm(
-                    pool.imap(
-                        iri_star,
-                        zip(
-                            itertools.repeat(self.dt),
-                            itertools.repeat(heights),
-                            blat,
-                            blon,
-                            itertools.repeat(0.0),
-                            itertools.repeat(self.iriversion),
-                        ),
+        if _apf107_args is None:
+            aap, af107, nlines = iricore.readapf107(self.iriversion)
+        else:
+            aap, af107, nlines = _apf107_args
+
+        if _pool is None:
+            pool = Pool(processes=nproc)
+        else:
+            pool = _pool
+
+        res = list(
+            tqdm(
+                pool.imap(
+                    iri_star,
+                    zip(
+                        itertools.repeat(self.dt),
+                        itertools.repeat(heights),
+                        blat,
+                        blon,
+                        itertools.repeat(0.0),
+                        itertools.repeat(self.iriversion),
+                        itertools.repeat(None),
+                        itertools.repeat(aap),
+                        itertools.repeat(af107),
+                        itertools.repeat(nlines),
                     ),
-                    total=nbatches,
-                    disable=not pbar,
-                    desc=self.name,
-                )
+                ),
+                total=nbatches,
+                disable=not pbar,
+                desc=self.name,
             )
-            self.edens = np.vstack([r["ne"] for r in res])
-            self.etemp = np.vstack([r["te"] for r in res])
+        )
+        if _pool is None:
+            pool.close()
+
+        self.edens = np.vstack([r["ne"] for r in res])
+        self.etemp = np.vstack([r["te"] for r in res])
         return
 
     def ed(

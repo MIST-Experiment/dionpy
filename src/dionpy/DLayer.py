@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Tuple
+from multiprocessing import Pool
+from typing import Tuple, Union, List
 
 import numpy as np
 from numpy import ndarray
@@ -41,6 +42,8 @@ class DLayer(IonLayer):
             iriversion: int = 20,
             pbar: bool = True,
             _autocalc: bool = True,
+            _pool: Union[Pool, None] = None,
+            _apf107_args: List | None = None,
     ):
         super().__init__(
             dt,
@@ -51,9 +54,11 @@ class DLayer(IonLayer):
             nside,
             rdeg=12,
             pbar=pbar,
+            name="D layer",
             iriversion=iriversion,
             _autocalc=_autocalc,
-            name="D layer",
+            _pool=_pool,
+            _apf107_args=_apf107_args,
         )
 
     def atten(

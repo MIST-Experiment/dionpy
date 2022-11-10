@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Tuple, List
+from multiprocessing import Pool
+from typing import Tuple, List, Union
 
 import numpy as np
 import pymap3d as pm
@@ -40,6 +41,8 @@ class FLayer(IonLayer):
         iriversion: int = 20,
         pbar: bool = True,
         _autocalc: bool = True,
+        _pool: Union[Pool, None] = None,
+        _apf107_args: List | None = None,
     ):
         super().__init__(
             dt,
@@ -50,9 +53,11 @@ class FLayer(IonLayer):
             nside,
             rdeg=24,
             pbar=pbar,
+            name="F layer",
             iriversion=iriversion,
             _autocalc=_autocalc,
-            name="F layer",
+            _pool=_pool,
+            _apf107_args=_apf107_args,
         )
 
     def refr(
