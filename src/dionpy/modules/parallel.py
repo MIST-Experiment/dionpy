@@ -2,6 +2,7 @@ import itertools
 from multiprocessing import cpu_count, Pool
 
 import iricore
+# import echaim
 import numpy as np
 from scipy.interpolate import interp1d
 from tqdm import tqdm
@@ -11,12 +12,17 @@ def iri_star(pars):
     return iricore.IRI(*pars)
 
 
+# def echaim_star(pars):
+#     return echaim.density_profile(*pars)
+
+
 def interp_val(data1, data2, dt1, dt2, dt):
     """
     Linear interpolation of value(s) between two data points/arrays given their datetimes.
     """
     if dt1 == dt2:
         return data1
+
 
     x = np.asarray([0, (dt2 - dt1).total_seconds()])
     y = np.asarray([data1, data2])

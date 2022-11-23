@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.99.1"
+version = "0.99.2"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -13,36 +13,33 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.8, <3.12"
 
-numpy = "^1.22"
-h5py = "^3.6.0"
-pymap3d = "^2.8.0"
-tqdm = "^4.64.0"
-scipy = "^1.8"
-astropy = "^5.1"
+numpy = "^1.22.5"
+healpy = "^1.16.1"
+tqdm = "^4.64.1"
+scipy = "^1.9.3"
+iricore = "^1.2.2"
 matplotlib = "^3.6.0"
 pytz = "^2022.1"
 it = "^1.0.0"
-jupyter = "^1.0.0"
-healpy = "^1.15.2"
 Sphinx = "^5.0.2"
 sphinx-rtd-theme = "^1.0.0"
 sphinx-autodoc-typehints = "^1.19.1"
 ffmpeg-progress-yield = "^0.3.0"
 sphinxcontrib-bibtex = "^2.5.0"
-iricore = "1.2.0"
-
+pymap3d = "^2.9.1"
+h5py = "^3.7.0"
 
 
 [tool.poetry.group.dev.dependencies]
-jupyter = "^1.0.0"
-PyQt5 = "^5.15.6"
-PyYAML = "^6.0"
-deepdish = "^0.3.7"
-pydarnio = "^1.1.1"
-pydarn = "^3.0"
-iri2016 = "^1.11.1"
-qrcode = {extras = ["pil"], version = "^7.3.1"}
-psutil = "^5.9.4"
+#jupyter = "^1.0.0"
+#PyQt5 = "^5.15.6"
+#PyYAML = "^6.0"
+#deepdish = "^0.3.7"
+#pydarnio = "^1.1.1"
+#pydarn = "^3.0"
+#iri2016 = "^1.11.1"
+#qrcode = {extras = ["pil"], version = "^7.3.1"}
+#psutil = "^5.9.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

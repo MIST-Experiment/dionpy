@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import itertools
 from datetime import datetime
-from time import time
 from multiprocessing import cpu_count, Pool
 from typing import Tuple, List, Union
 
@@ -79,7 +78,7 @@ class IonLayer:
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
         """
-        batch = 100
+        batch = 200
         nbatches = len(self._obs_pixels) // batch + 1
         nproc = np.min([cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
@@ -122,6 +121,29 @@ class IonLayer:
                 desc=self.name,
             )
         )
+
+        # if self.use_echaim:
+        #     alts = np.linspace(self.hbot, self.htop, self.nlayers)
+        #     res_echaim = list(
+        #         tqdm(
+        #             pool.imap(
+        #                 echaim_star,
+        #                 zip(
+        #                     blat,
+        #                     blon,
+        #                     itertools.repeat(alts),
+        #                     itertools.repeat(self.dt),
+        #                     itertools.repeat(True),
+        #                     itertools.repeat(True),
+        #                     itertools.repeat(True),
+        #                 ),
+        #             ),
+        #             total=nbatches,
+        #             disable=not pbar,
+        #             desc=self.name,
+        #         )
+        #     )
+        #     self.edens = np.vstack(res_echaim)
         if _pool is None:
             pool.close()
 
