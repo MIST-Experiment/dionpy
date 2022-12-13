@@ -114,7 +114,7 @@ class FLayer(IonLayer):
         n_cur = np.ones(el.shape)
 
         # Get IRI info of point
-        fed = self.ed(el, az, layer=0)
+        fed = self.edll(lat_ray, lon_ray, layer=0)
 
         # Refraction index of 1st point
         n_next = refr_index(fed, freq)
@@ -147,8 +147,7 @@ class FLayer(IonLayer):
                 n_next = 1
             else:
                 # Get IRI info of 2nd point
-                # TODO: check if need to update elevation
-                fed = self.ed(el, az, layer=i)
+                fed = self.edll(lat_ray, lon_ray, layer=i)
 
                 # Refractive indices
                 n_next = refr_index(fed, freq)

@@ -196,6 +196,24 @@ class IonLayer:
             layer=layer,
         )
 
+    def edll(
+        self,
+        lat: float | np.ndarray,
+        lon: float | np.ndarray,
+        layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param lat: Latitude of a point.
+        :param lon: Longitude of a point.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the layer.
+        """
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        map_[self._obs_pixels] = self.edens[:, layer]
+        return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
+
+
     def et(
         self,
         el: float | np.ndarray,
@@ -221,3 +239,20 @@ class IonLayer:
             self.etemp,
             layer=layer,
         )
+
+    def etll(
+        self,
+        lat: float | np.ndarray,
+        lon: float | np.ndarray,
+        layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param lat: Latitude of a point.
+        :param lon: Longitude of a point.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the layer.
+        """
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        map_[self._obs_pixels] = self.etemp[:, layer]
+        return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
