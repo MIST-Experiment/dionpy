@@ -8,12 +8,13 @@ import numpy as np
 from numpy import ndarray
 
 from .IonLayer import IonLayer
+from .IonLayerNorth import IonLayerNorth
 from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 from .modules.helpers import check_elaz_shape
 from .modules.ion_tools import trop_refr, plasfreq, srange
 
 
-class DLayer(IonLayer):
+class DLayer(IonLayerNorth):
     """
     Implements a model of ionospheric attenuation.
 
@@ -27,6 +28,7 @@ class DLayer(IonLayer):
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
@@ -40,6 +42,7 @@ class DLayer(IonLayer):
             nlayers: int = 100,
             nside: int = 64,
             iriversion: int = 20,
+            echaim: bool = False,
             pbar: bool = True,
             _autocalc: bool = True,
             _pool: Union[Pool, None] = None,
@@ -52,10 +55,11 @@ class DLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=12,
+            rdeg=15,
             pbar=pbar,
             name="D layer",
             iriversion=iriversion,
+            echaim=echaim,
             _autocalc=_autocalc,
             _pool=_pool,
             _apf107_args=_apf107_args,
@@ -82,7 +86,6 @@ class DLayer(IonLayer):
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
-        # TODO: Add depedency on instrument height
         freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()

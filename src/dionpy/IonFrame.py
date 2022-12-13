@@ -40,6 +40,7 @@ class IonFrame:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param _pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
@@ -56,6 +57,7 @@ class IonFrame:
         ftop: float = 500,
         nflayers: int = 100,
         iriversion: int = 20,
+        echaim: bool = False,
         _pbar: bool = False,
         _autocalc: bool = True,
         _pool: Union[Pool, None] = None,
@@ -69,10 +71,10 @@ class IonFrame:
         self.nside = nside
         self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, echaim, _pbar, _autocalc, _pool, _apf107_args,
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
+            dt, position, fbot, ftop, nflayers, nside, iriversion, echaim, _pbar, _autocalc, _pool, _apf107_args,
         )
 
     @staticmethod

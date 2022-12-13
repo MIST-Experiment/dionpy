@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.99.2"
+version = "0.99.3"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -21,7 +21,7 @@ matplotlib = "^3.6.0"
 pymap3d = "^2.9.1"
 h5py = "^3.7.0"
 
-iricore = "^1.2.2"
+iricore = "^1.2.6"
 echaim = "^1.0.8"
 
 pytz = "^2022.1"

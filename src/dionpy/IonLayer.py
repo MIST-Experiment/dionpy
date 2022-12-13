@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .modules.helpers import eval_layer
-from .modules.parallel import iri_star
+from .modules.parallel import iri_star, echaim_star
 
 
 class IonLayer:
@@ -46,6 +46,7 @@ class IonLayer:
         pbar: bool = True,
         name: str | None = None,
         iriversion: int = 20,
+        echaim: bool = False,
         _autocalc: bool = True,
         _pool: Union[Pool, None] = None,
         _apf107_args: List | None = None,
@@ -56,6 +57,7 @@ class IonLayer:
         self.dt = dt
         self.position = position
         self.name = name
+        self.echaim = echaim
 
         self.nside = nside
         self.rdeg = rdeg
@@ -73,16 +75,22 @@ class IonLayer:
         if _autocalc:
             self._calc(pbar=pbar, _pool=_pool, _apf107_args=_apf107_args)
 
+
+    def _batch_split(self, batch):
+        nbatches = len(self._obs_pixels) // batch + 1
+        nproc = np.min([cpu_count(), nbatches])
+        blat = np.array_split(self._obs_lats, nbatches)
+        blon = np.array_split(self._obs_lons, nbatches)
+        return nbatches, nproc, blat, blon
+
     def _calc(self, pbar=True, _pool: Union[Pool, None] = None, _apf107_args: List | None = None):
         """
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
         """
-        batch = 200
-        nbatches = len(self._obs_pixels) // batch + 1
-        nproc = np.min([cpu_count(), nbatches])
-        blat = np.array_split(self._obs_lats, nbatches)
-        blon = np.array_split(self._obs_lons, nbatches)
+
+        nbatches, nproc, blat, blon = self._batch_split(200)
+
         heights = (
             self.hbot,
             self.htop,
@@ -94,10 +102,7 @@ class IonLayer:
         else:
             aap, af107, nlines = _apf107_args
 
-        if _pool is None:
-            pool = Pool(processes=nproc)
-        else:
-            pool = _pool
+        pool = Pool(processes=nproc) if _pool is None else _pool
 
         res = list(
             tqdm(
@@ -110,7 +115,6 @@ class IonLayer:
                         blon,
                         itertools.repeat(0.0),
                         itertools.repeat(self.iriversion),
-                        itertools.repeat(None),
                         itertools.repeat(aap),
                         itertools.repeat(af107),
                         itertools.repeat(nlines),
@@ -122,33 +126,48 @@ class IonLayer:
             )
         )
 
-        # if self.use_echaim:
-        #     alts = np.linspace(self.hbot, self.htop, self.nlayers)
-        #     res_echaim = list(
-        #         tqdm(
-        #             pool.imap(
-        #                 echaim_star,
-        #                 zip(
-        #                     blat,
-        #                     blon,
-        #                     itertools.repeat(alts),
-        #                     itertools.repeat(self.dt),
-        #                     itertools.repeat(True),
-        #                     itertools.repeat(True),
-        #                     itertools.repeat(True),
-        #                 ),
-        #             ),
-        #             total=nbatches,
-        #             disable=not pbar,
-        #             desc=self.name,
-        #         )
-        #     )
-        #     self.edens = np.vstack(res_echaim)
         if _pool is None:
             pool.close()
 
         self.edens = np.vstack([r["ne"] for r in res])
         self.etemp = np.vstack([r["te"] for r in res])
+        if self.echaim:
+            self._calc_echaim(pbar, _pool)
+        return
+
+    def _calc_echaim(self, pbar=True, _pool: Union[Pool, None] = None):
+        """
+        Replace electron density with that calculated with ECHAIM.
+        """
+        nbatches, nproc, blat, blon = self._batch_split(100)
+        heights = np.linspace(self.hbot, self.htop, self.nlayers, endpoint=True)
+
+        pool = Pool(processes=nproc) if _pool is None else _pool
+
+        res = list(
+            tqdm(
+                pool.imap(
+                    echaim_star,
+                    zip(
+                        blat,
+                        blon,
+                        itertools.repeat(heights),
+                        itertools.repeat(self.dt),
+                        itertools.repeat(True),
+                        itertools.repeat(True),
+                        itertools.repeat(True),
+                    ),
+                ),
+                total=nbatches,
+                disable=not pbar,
+                desc=self.name,
+            )
+        )
+
+        if _pool is None:
+            pool.close()
+
+        self.edens = np.vstack(res)
         return
 
     def ed(

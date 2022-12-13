@@ -26,23 +26,25 @@ class FLayer(IonLayer):
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param pbar: If True - a progress bar will appear.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
 
     def __init__(
-        self,
-        dt: datetime,
-        position: Tuple[float, float, float],
-        hbot: float = 150,
-        htop: float = 500,
-        nlayers: int = 100,
-        nside: int = 64,
-        iriversion: int = 20,
-        pbar: bool = True,
-        _autocalc: bool = True,
-        _pool: Union[Pool, None] = None,
-        _apf107_args: List | None = None,
+            self,
+            dt: datetime,
+            position: Tuple[float, float, float],
+            hbot: float = 150,
+            htop: float = 500,
+            nlayers: int = 100,
+            nside: int = 64,
+            iriversion: int = 20,
+            echaim: bool = False,
+            pbar: bool = True,
+            _autocalc: bool = True,
+            _pool: Union[Pool, None] = None,
+            _apf107_args: List | None = None,
     ):
         super().__init__(
             dt,
@@ -51,21 +53,22 @@ class FLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=24,
+            rdeg=30,
             pbar=pbar,
             name="F layer",
             iriversion=iriversion,
+            echaim=echaim,
             _autocalc=_autocalc,
             _pool=_pool,
             _apf107_args=_apf107_args,
         )
 
     def refr(
-        self,
-        el: float | np.ndarray,
-        az: float | np.ndarray,
-        freq: float | List | np.ndarray,
-        troposphere: bool = True,
+            self,
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            freq: float | List | np.ndarray,
+            troposphere: bool = True,
     ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -75,8 +78,7 @@ class FLayer(IonLayer):
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
-        # TODO: Add depedency on instrument height
-        #TODO: Fix low frequency cutoff calculation
+        # TODO: Fix low frequency cutoff calculation
         freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
@@ -104,7 +106,7 @@ class FLayer(IonLayer):
         d_cur = re + f_heights[0]  # Distance from Earth center to layer
 
         # The inclination angle at the 1st interface using law of cosines [rad]
-        costheta_inc = (r_slant**2 + d_cur**2 - d_tel**2) / (2 * r_slant * d_cur)
+        costheta_inc = (r_slant ** 2 + d_cur ** 2 - d_tel ** 2) / (2 * r_slant * d_cur)
         assert (costheta_inc <= 1).all(), "Something is wrong with coordinates."
         theta_inc = np.arccos(costheta_inc)
 
@@ -120,7 +122,6 @@ class FLayer(IonLayer):
         # The outgoing angle at the 1st interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
         inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
-
 
         delta_theta += theta_ref - theta_inc
 
@@ -142,22 +143,21 @@ class FLayer(IonLayer):
             lat_ray, lon_ray, _ = pm.aer2geodetic(
                 az, el_cur, r_slant, lat_ray, lon_ray, f_heights[i - 1], ell=ell
             )
-            if i == self.nlayers-1:
+            if i == self.nlayers - 1:
                 n_next = 1
             else:
                 # Get IRI info of 2nd point
+                # TODO: check if need to update elevation
                 fed = self.ed(el, az, layer=i)
 
                 # Refractive indices
                 n_next = refr_index(fed, freq)
                 nan_theta_mask += plasfreq(fed) > freq
 
-
             # The outgoing angle at the 2nd interface using Snell's law
             theta_ref = refr_angle(n_cur, n_next, theta_inc)
             inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
             delta_theta += theta_ref - theta_inc
-
 
             # Update variables for new interface
             el_cur = np.rad2deg(np.pi / 2 - theta_ref)

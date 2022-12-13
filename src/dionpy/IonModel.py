@@ -40,6 +40,7 @@ class IonModel:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                     the last two digits of the IRI version number. For example, version 20 refers
                     to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
 
@@ -57,6 +58,7 @@ class IonModel:
             ftop: float = 500,
             nflayers: int = 100,
             iriversion: int = 20,
+            echaim: bool = False,
             _autocalc: bool = True,
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
@@ -107,6 +109,7 @@ class IonModel:
                         ftop,
                         nflayers,
                         iriversion,
+                        echaim,
                         _pbar=False,
                         _autocalc=_autocalc,
                         _pool=pool,
