@@ -35,21 +35,21 @@ class IonLayer:
     :param _autocalc: If True - the model will be calculated immediately after definition.
     """
     def __init__(
-        self,
-        dt: datetime,
-        position: Tuple[float, float, float],
-        hbot: float,
-        htop: float,
-        nlayers: int = 100,
-        nside: int = 64,
-        rdeg: float = 20,
-        pbar: bool = True,
-        name: str | None = None,
-        iriversion: int = 20,
-        echaim: bool = False,
-        _autocalc: bool = True,
-        _pool: Union[Pool, None] = None,
-        _apf107_args: List | None = None,
+            self,
+            dt: datetime,
+            position: Tuple[float, float, float],
+            hbot: float,
+            htop: float,
+            nlayers: int = 100,
+            nside: int = 64,
+            rdeg: float = 20,
+            pbar: bool = True,
+            name: str | None = None,
+            iriversion: int = 20,
+            echaim: bool = False,
+            _autocalc: bool = True,
+            _pool: Union[Pool, None] = None,
+            _apf107_args: List | None = None,
     ):
         self.hbot = hbot
         self.htop = htop
@@ -74,7 +74,6 @@ class IonLayer:
 
         if _autocalc:
             self._calc(pbar=pbar, _pool=_pool, _apf107_args=_apf107_args)
-
 
     def _batch_split(self, batch):
         nbatches = len(self._obs_pixels) // batch + 1
@@ -171,10 +170,10 @@ class IonLayer:
         return
 
     def ed(
-        self,
-        el: float | np.ndarray,
-        az: float | np.ndarray,
-        layer: int | None = None,
+            self,
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            layer: int | None = None,
     ) -> float | np.ndarray:
         """
         :param el: Elevation of an observation.
@@ -197,10 +196,10 @@ class IonLayer:
         )
 
     def edll(
-        self,
-        lat: float | np.ndarray,
-        lon: float | np.ndarray,
-        layer: int | None = None,
+            self,
+            lat: float | np.ndarray,
+            lon: float | np.ndarray,
+            layer: int | None = None,
     ) -> float | np.ndarray:
         """
         :param lat: Latitude of a point.
@@ -213,12 +212,11 @@ class IonLayer:
         map_[self._obs_pixels] = self.edens[:, layer]
         return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
 
-
     def et(
-        self,
-        el: float | np.ndarray,
-        az: float | np.ndarray,
-        layer: int | None = None,
+            self,
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            layer: int | None = None,
     ) -> float | np.ndarray:
         """
         :param el: Elevation of an observation.
@@ -241,10 +239,10 @@ class IonLayer:
         )
 
     def etll(
-        self,
-        lat: float | np.ndarray,
-        lon: float | np.ndarray,
-        layer: int | None = None,
+            self,
+            lat: float | np.ndarray,
+            lon: float | np.ndarray,
+            layer: int | None = None,
     ) -> float | np.ndarray:
         """
         :param lat: Latitude of a point.
