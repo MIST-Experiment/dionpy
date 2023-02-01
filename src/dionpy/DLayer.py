@@ -118,9 +118,9 @@ class DLayer(IonLayerNorth):
             det = self.et(el, az, layer=i)
             freq_p = plasfreq(ded)
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
-            atten[:, :, i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
-            emiss[:, :, i] = (1 - atten[:, :, i]) * det
-        atten = 1 + atten.sum(axis=2) - self.nlayers
+            atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
+            emiss[..., i] = (1 - atten[..., i]) * det
+        atten = 1 + atten.sum(axis=-1) - self.nlayers
         # print(atten[0, 0, :])
         # atten = atten.prod(axis=2)
 
