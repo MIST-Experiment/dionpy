@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+# import multiprocessing
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
 from typing import Tuple, List, Union
@@ -12,6 +13,9 @@ from tqdm import tqdm
 
 from .modules.helpers import eval_layer
 from .modules.parallel import iri_star, echaim_star
+
+# logger = multiprocessing.log_to_stderr()
+# logger.setLevel(multiprocessing.SUBDEBUG)
 
 
 class IonLayer:
@@ -101,8 +105,8 @@ class IonLayer:
         else:
             aap, af107, nlines = _apf107_args
 
+        # nproc=4
         pool = Pool(processes=nproc) if _pool is None else _pool
-
         res = list(
             tqdm(
                 pool.imap(

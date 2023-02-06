@@ -73,8 +73,7 @@ class FLayer(IonLayer):
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
-        :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
-                     available cores. Requires `dt` to be a single datetime object.
+        :param freq: Frequency of observation(s) in [MHz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
@@ -166,3 +165,4 @@ class FLayer(IonLayer):
         delta_theta = np.where(inf_theta_mask == 0, delta_theta, np.inf)
         delta_theta = np.where(nan_theta_mask == 0, delta_theta, np.nan)
         return np.rad2deg(delta_theta)
+
