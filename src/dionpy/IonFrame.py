@@ -150,6 +150,7 @@ class IonFrame:
             freq,
             _pbar_desc,
             col_freq=col_freq,
+            emission=emission,
             troposphere=troposphere,
         )
 
