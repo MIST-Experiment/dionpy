@@ -121,6 +121,7 @@ class DLayer(IonLayerNorth):
             atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
             emiss[..., i] = (1 - atten[..., i]) * det
         atten = 1 + atten.sum(axis=-1) - self.nlayers
+        emiss = emiss.sum(axis=-1)
         # print(atten[0, 0, :])
         # atten = atten.prod(axis=2)
 
