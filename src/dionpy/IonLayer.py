@@ -4,7 +4,7 @@ import itertools
 # import multiprocessing
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Collection
 
 import healpy as hp
 import iricore
@@ -41,7 +41,7 @@ class IonLayer:
     def __init__(
             self,
             dt: datetime,
-            position: Tuple[float, float, float],
+            position: Collection[float, float, float],
             hbot: float,
             htop: float,
             nlayers: int = 100,

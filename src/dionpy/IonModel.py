@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import List, Callable
+from typing import List, Callable, Collection
 import warnings
 
 import numpy as np
@@ -48,7 +48,7 @@ class IonModel:
             self,
             dt_start: datetime,
             dt_end: datetime,
-            position: List[float, float, float],
+            position: Collection[float, float, float],
             mpf: int = 15,
             nside: int = 64,
             dbot: float = 60,
@@ -248,7 +248,9 @@ class IonModel:
         """
         if dt in self._dts:
             idx = np.argwhere(self._dts == dt)
+            print(idx)
             return self.models[idx[0][0]]
+        print("here")
         obj = IonFrame(
             dt=dt,
             position=self.position,

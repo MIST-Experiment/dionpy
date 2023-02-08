@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Collection
 
 import numpy as np
 from numpy import ndarray
@@ -36,7 +36,7 @@ class DLayer(IonLayerNorth):
     def __init__(
             self,
             dt: datetime,
-            position: Tuple[float, float, float],
+            position: Collection[float, float, float],
             hbot: float = 60,
             htop: float = 90,
             nlayers: int = 100,
@@ -110,7 +110,7 @@ class DLayer(IonLayerNorth):
             theta += dtheta
             el -= np.rad2deg(dtheta)
 
-        c = 2.99792458e8  # speed of light
+        c = 2.99792458e8
 
         for i in range(self.nlayers):
             freq_c = col_model(heights_km[i])
@@ -122,7 +122,6 @@ class DLayer(IonLayerNorth):
             emiss[..., i] = (1 - atten[..., i]) * det
         atten = 1 + atten.sum(axis=-1) - self.nlayers
         emiss = emiss.sum(axis=-1)
-        # print(atten[0, 0, :])
         # atten = atten.prod(axis=2)
 
         if atten.size == 1:

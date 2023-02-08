@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable, Union, List
+from typing import Tuple, Callable, Union, List, Collection
 
 import h5py
 import numpy as np
@@ -48,7 +48,7 @@ class IonFrame:
     def __init__(
         self,
         dt: datetime,
-        position: Tuple[float, float, float],
+        position: Collection[float, float, float],
         nside: int = 64,
         dbot: float = 60,
         dtop: float = 90,
@@ -171,11 +171,10 @@ class IonFrame:
         meta.attrs["fbot"] = self.flayer.hbot
         meta.attrs["ftop"] = self.flayer.htop
 
-        if np.average(self.dlayer.edens) > 0 and np.average(self.flayer.edens) > 0:
-            grp.create_dataset("dedens", data=self.dlayer.edens)
-            grp.create_dataset("detemp", data=self.dlayer.etemp)
-            grp.create_dataset("fedens", data=self.flayer.edens)
-            grp.create_dataset("fetemp", data=self.flayer.etemp)
+        grp.create_dataset("dedens", data=self.dlayer.edens)
+        grp.create_dataset("detemp", data=self.dlayer.etemp)
+        grp.create_dataset("fedens", data=self.flayer.edens)
+        grp.create_dataset("fetemp", data=self.flayer.etemp)
 
     def save(self, saveto: str = "./ionframe"):
         """
