@@ -75,6 +75,15 @@ class IonFrame:
             dt, position, fbot, ftop, nflayers, nside, iriversion, autocalc, _pbar, _pool, _apf107_args,
         )
 
+    def calc(self, pbar: bool = False):
+        """
+        Calculates the model (use it if you set autocalc=False during the initialization).
+
+        :param pbar: If True - a progress bar will appear.
+        """
+        self.dlayer._calc(pbar)
+        self.flayer._calc(pbar)
+
     @staticmethod
     def _parallel_calc(func, el, az, freq, pbar_desc, **kwargs):
         """

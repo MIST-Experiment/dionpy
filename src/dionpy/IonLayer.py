@@ -110,7 +110,6 @@ class IonLayer:
                         blon,
                         itertools.repeat(0.0),
                         itertools.repeat(self.iriversion),
-                        itertools.repeat(None),
                         itertools.repeat(aap),
                         itertools.repeat(af107),
                         itertools.repeat(nlines),
