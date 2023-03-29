@@ -40,7 +40,7 @@ class IonModel:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                     the last two digits of the IRI version number. For example, version 20 refers
                     to IRI-2020.
-    :param _autocalc: If True - the model will be calculated immediately after definition.
+    :param autocalc: If True - the model will be calculated immediately after definition.
     """
 
     def __init__(
@@ -57,7 +57,7 @@ class IonModel:
             ftop: float = 500,
             nflayers: int = 100,
             iriversion: int = 20,
-            _autocalc: bool = True,
+            autocalc: bool = True,
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
             raise ValueError("Parameters dt_start and dt_end must be datetime objects.")
@@ -88,7 +88,7 @@ class IonModel:
         self.iriversion = iriversion
         self.models = []
 
-        if _autocalc:
+        if autocalc:
             nproc = np.min([cpu_count(), nmodels])
             # nproc = 1
             pool = Pool(processes=nproc)
@@ -107,8 +107,8 @@ class IonModel:
                         ftop,
                         nflayers,
                         iriversion,
+                        autocalc=autocalc,
                         _pbar=False,
-                        _autocalc=_autocalc,
                         _pool=pool,
                         _apf107_args=apf107_args,
                     )
@@ -176,7 +176,7 @@ class IonModel:
                 )
             meta = file.get("meta")
             obj = cls(
-                _autocalc=False,
+                autocalc=False,
                 dt_start=datetime.strptime(meta.attrs["dt_start"], "%Y-%m-%d %H:%M"),
                 dt_end=datetime.strptime(meta.attrs["dt_end"], "%Y-%m-%d %H:%M"),
                 position=meta.attrs["position"],
@@ -257,7 +257,7 @@ class IonModel:
             ftop=self.ftop,
             nflayers=self.nflayers,
             _pbar=False,
-            _autocalc=recalc,
+            autocalc=recalc,
         )
         if recalc:
             return obj

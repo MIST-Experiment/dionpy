@@ -27,8 +27,8 @@ class DLayer(IonLayer):
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param autocalc: If True - the model will be calculated immediately after definition.
     :param pbar: If True - a progress bar will appear.
-    :param _autocalc: If True - the model will be calculated immediately after definition.
     """
 
     def __init__(
@@ -40,8 +40,8 @@ class DLayer(IonLayer):
             nlayers: int = 100,
             nside: int = 64,
             iriversion: int = 20,
+            autocalc: bool = True,
             pbar: bool = True,
-            _autocalc: bool = True,
             _pool: Union[Pool, None] = None,
             _apf107_args: List | None = None,
     ):
@@ -56,7 +56,7 @@ class DLayer(IonLayer):
             pbar=pbar,
             name="D layer",
             iriversion=iriversion,
-            _autocalc=_autocalc,
+            autocalc=autocalc,
             _pool=_pool,
             _apf107_args=_apf107_args,
         )

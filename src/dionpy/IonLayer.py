@@ -32,7 +32,7 @@ class IonLayer:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
-    :param _autocalc: If True - the model will be calculated immediately after definition.
+    :param autocalc: If True - the model will be calculated immediately after definition.
     """
     def __init__(
         self,
@@ -46,7 +46,7 @@ class IonLayer:
         pbar: bool = True,
         name: str | None = None,
         iriversion: int = 20,
-        _autocalc: bool = True,
+        autocalc: bool = True,
         _pool: Union[Pool, None] = None,
         _apf107_args: List | None = None,
     ):
@@ -70,7 +70,7 @@ class IonLayer:
         self.edens = np.zeros((len(self._obs_pixels), nlayers))
         self.etemp = np.zeros((len(self._obs_pixels), nlayers))
 
-        if _autocalc:
+        if autocalc:
             self._calc(pbar=pbar, _pool=_pool, _apf107_args=_apf107_args)
 
     def _calc(self, pbar=True, _pool: Union[Pool, None] = None, _apf107_args: List | None = None):

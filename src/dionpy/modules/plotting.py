@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Tuple, Sequence
 
 import numpy as np
 from matplotlib import colormaps
@@ -29,7 +29,7 @@ plot_kwargs = {
 
 
 def polar_plot(
-    data: Tuple[np.ndarray, np.ndarray, np.ndarray],
+    data: Sequence[np.ndarray, np.ndarray, np.ndarray],
     dt: datetime | None = None,
     pos: Tuple[float, float, float] | None = None,
     freq: float | None = None,

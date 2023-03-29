@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable, Union, List
+from typing import Tuple, Callable, Union, List, Sequence
 
 import h5py
 import numpy as np
@@ -40,14 +40,14 @@ class IonFrame:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param autocalc: If True - the model will be calculated immediately after definition.
     :param _pbar: If True - a progress bar will appear.
-    :param _autocalc: If True - the model will be calculated immediately after definition.
     """
 
     def __init__(
         self,
         dt: datetime,
-        position: Tuple[float, float, float],
+        position: Sequence[float, float, float],
         nside: int = 64,
         dbot: float = 60,
         dtop: float = 90,
@@ -56,8 +56,8 @@ class IonFrame:
         ftop: float = 500,
         nflayers: int = 100,
         iriversion: int = 20,
+        autocalc: bool = True,
         _pbar: bool = False,
-        _autocalc: bool = True,
         _pool: Union[Pool, None] = None,
         _apf107_args: List | None = None
     ):
@@ -69,10 +69,10 @@ class IonFrame:
         self.nside = nside
         self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, autocalc, _pbar, _pool, _apf107_args,
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, iriversion, _pbar, _autocalc, _pool, _apf107_args,
+            dt, position, fbot, ftop, nflayers, nside, iriversion, autocalc, _pbar, _pool, _apf107_args,
         )
 
     @staticmethod
@@ -191,7 +191,7 @@ class IonFrame:
     def read_self_from_file(cls, grp: h5py.Group):
         meta = grp.get("meta")
         obj = cls(
-            _autocalc=False,
+            autocalc=False,
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
             position=meta.attrs["position"],
             nside=meta.attrs["nside"],
