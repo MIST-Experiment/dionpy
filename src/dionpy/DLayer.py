@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Tuple, Union, List, Collection
+from typing import Tuple, Union, List, Sequence
 
 import numpy as np
 from numpy import ndarray
@@ -36,7 +36,7 @@ class DLayer(IonLayerNorth):
     def __init__(
             self,
             dt: datetime,
-            position: Collection[float, float, float],
+            position: Sequence[float, float, float],
             hbot: float = 60,
             htop: float = 90,
             nlayers: int = 100,
@@ -120,9 +120,9 @@ class DLayer(IonLayerNorth):
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
             atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
             emiss[..., i] = (1 - atten[..., i]) * det
-        atten = 1 + atten.sum(axis=-1) - self.nlayers
+        # atten = 1 + atten.sum(axis=-1) - self.nlayers
+        atten = atten.prod(axis=2)
         emiss = emiss.sum(axis=-1)
-        # atten = atten.prod(axis=2)
 
         if atten.size == 1:
             atten = atten[0, 0]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Tuple, List, Union, Collection
+from typing import Tuple, List, Union, Sequence
 
 import numpy as np
 import pymap3d as pm
@@ -34,7 +34,7 @@ class FLayer(IonLayer):
     def __init__(
             self,
             dt: datetime,
-            position: Collection[float, float, float],
+            position: Sequence[float, float, float],
             hbot: float = 150,
             htop: float = 500,
             nlayers: int = 100,

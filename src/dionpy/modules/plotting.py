@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
-from typing import Tuple
+from typing import Sequence
 
 import numpy as np
 from matplotlib import colormaps
@@ -17,7 +17,8 @@ plot_kwargs = {
     "title": "Title of the plot",
     "barlabel": "Label near colorbar. Most functions override this parameter.",
     "plotlabel": "Label under plot. Usually includes date/time, location and frequency of an observation.",
-    "cblim": "Tuple containing min and max values of the colorbar scale.",
+    "cblim": "Tuple containing min and max values of the colorbar scale. If any of limits is None - max/min values is "
+             "automatically calculated.",
     "saveto": "Path to save the plot. Must include name. If not specified - the plot will not be saved.",
     "dpi": "Image resolution.",
     "cmap": "A colormap to use in the plot.",
@@ -29,14 +30,14 @@ plot_kwargs = {
 
 
 def polar_plot(
-    data: Tuple[np.ndarray, np.ndarray, np.ndarray],
+    data: Sequence[np.ndarray, np.ndarray, np.ndarray],
     dt: datetime | None = None,
-    pos: Tuple[float, float, float] | None = None,
+    pos: Sequence[float, float, float] | None = None,
     freq: float | None = None,
     title: str | None = None,
     barlabel: str | None = None,
     plotlabel: str | None = None,
-    cblim: Tuple[float, float] | None = None,
+    cblim: Sequence[float, float] = None,
     saveto: str | None = None,
     dpi: int = 300,
     cmap: str = "viridis",
@@ -71,7 +72,11 @@ def polar_plot(
         if freq is not None:
             plotlabel += f"Frequency: {freq:.1f} MHz"
 
-    cblim = cblim or (np.nanmin(data[2][data[2] != -np.inf]), np.nanmax(data[2][data[2] != np.inf]))
+    cblim = cblim or [None, None]
+    if cblim[0] is None:
+        cblim[0] = np.nanmin(data[2][data[2] != -np.inf])
+    if cblim[1] is None:
+        cblim[1] = cblim[1] or np.nanmax(data[2][data[2] != np.inf])
 
     plot_data = np.where(np.isinf(data[2]), cblim[1]+1e8, data[2])
     if isinstance(cmap, str):
@@ -94,9 +99,9 @@ def polar_plot(
     )
     ax.grid(color="gray", linestyle=":")
     ax.set_theta_zero_location("N")
-    rfmt = lambda x_, _: f"{x_}°"
+    rfmt = lambda x_, _: f"{x_:.0f}°"
     ax.yaxis.set_major_formatter(FuncFormatter(rfmt))
-    ax.set_rticks([90, 60, 30, 0], Fontsize=30)
+    # ax.set_rticks([90, 60, 30, 0], fontsize=30)
     ax.set_theta_direction(-1)
 
     ax.tick_params(axis="both", which="major", labelsize=11)

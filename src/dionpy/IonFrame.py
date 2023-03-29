@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable, Union, List, Collection
+from typing import Tuple, Callable, Union, List, Sequence
 
 import h5py
 import numpy as np
@@ -48,7 +48,7 @@ class IonFrame:
     def __init__(
         self,
         dt: datetime,
-        position: Collection[float, float, float],
+        position: Sequence[float, float, float],
         nside: int = 64,
         dbot: float = 60,
         dtop: float = 90,
@@ -318,7 +318,7 @@ class IonFrame:
         )
 
     def plot_atten(
-        self, freq: float, troposphere: bool = True, gridsize: int = 200, **kwargs
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None,  **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -326,11 +326,14 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
         atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
+        cblim = cblim or [None, 1]
         # atten_db = 20 * np.log10(atten)
         # barlabel = r"dB"
         return polar_plot(
@@ -338,6 +341,37 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             freq=freq,
+            cmap=cmap,
+            cblim=cblim,
+            **kwargs,
+        )
+
+    def plot_emiss(
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None, **kwargs
+    ):
+        """
+        Visualize ionospheric attenuation.
+
+        :param freq: Frequency of observation in [Hz].
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
+        :param kwargs: See `dionpy.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
+        el, az = elaz_mesh(gridsize)
+        _, emiss = self.dlayer.atten(el, az, freq, troposphere=troposphere, emission=True)
+        cblim = cblim or [0, None]
+        barlabel = r"$K$"
+        return polar_plot(
+            (np.deg2rad(az), 90 - el, emiss),
+            dt=self.dt,
+            pos=self.position,
+            freq=freq,
+            barlabel=barlabel,
+            cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 
@@ -346,7 +380,8 @@ class IonFrame:
         freq: float,
         troposphere: bool = True,
         gridsize: int = 200,
-        cmap: str = "viridis_r",
+        cmap: str = 'viridis_r',
+        cblim=None,
         **kwargs,
     ):
         """
@@ -356,9 +391,11 @@ class IonFrame:
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
+        cblim = cblim or [0, None]
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
@@ -369,20 +406,23 @@ class IonFrame:
             freq=freq,
             barlabel=barlabel,
             cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 
-    def plot_troprefr(self, gridsize=200, cmap="viridis_r", **kwargs):
+    def plot_troprefr(self, gridsize=200, cmap="viridis_r", cblim=None, **kwargs):
         """
         Visualize tropospheric refraction.
 
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
         troprefr = self.troprefr(el)
+        cblim = cblim or [0, None]
         barlabel = r"$deg$"
         return polar_plot(
             (np.deg2rad(az), 90 - el, troprefr),
@@ -390,6 +430,7 @@ class IonFrame:
             pos=self.position,
             barlabel=barlabel,
             cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Tuple, Iterable, List
+from typing import Tuple, Iterable, List, Sequence
 
 import healpy as hp
 import numpy as np
@@ -107,11 +107,11 @@ def eval_layer(
     el: float | np.ndarray,
     az: float | np.ndarray,
     nside: int,
-    position: Tuple[float, float, float],
+    position: Sequence[float, float, float],
     hbot: float,
     htop: float,
     nlayers: int,
-    obs_pixels: List[int],
+    obs_pixels: Sequence[int],
     data: float | np.ndarray,
     layer: int | None = None,
 ):

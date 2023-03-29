@@ -6,7 +6,7 @@ np.seterr(invalid="ignore")
 
 
 def srange(
-    theta: float | np.ndarray, alt: float, re: float = 6378100
+        theta: float | np.ndarray, alt: float, re: float = 6378100
 ) -> float | np.ndarray:
     """
     :param theta: Zenith angle in [rad].
@@ -47,11 +47,10 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     return np.sqrt(1 - (nu_p / freq) ** 2)
 
 
-
 def refr_angle(
-    n1: float | np.ndarray,
-    n2: float | np.ndarray,
-    phi: float | np.ndarray,
+        n1: float | np.ndarray,
+        n2: float | np.ndarray,
+        phi: float | np.ndarray,
 ) -> float | np.ndarray:
     """
     Snell's law.
