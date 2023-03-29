@@ -94,9 +94,8 @@ def polar_plot(
     )
     ax.grid(color="gray", linestyle=":")
     ax.set_theta_zero_location("N")
-    rfmt = lambda x_, _: f"{x_}°"
+    rfmt = lambda x_, _: f"{x_:.0f}°"
     ax.yaxis.set_major_formatter(FuncFormatter(rfmt))
-    ax.set_rticks([90, 60, 30, 0], Fontsize=30)
     ax.set_theta_direction(-1)
 
     ax.tick_params(axis="both", which="major", labelsize=11)
