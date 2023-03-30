@@ -6,7 +6,7 @@ np.seterr(invalid="ignore")
 
 
 def srange(
-    theta: float | np.ndarray, alt: float, re: float = 6378100
+    theta: float | np.ndarray, alt: float | np.ndarray, re: float = 6378100
 ) -> float | np.ndarray:
     """
     :param theta: Zenith angle in [rad].
@@ -14,6 +14,8 @@ def srange(
     :param re: Radius of the Earth in [m].
     :return: Distance in meters from the telescope to the point (theta, alt)
     """
+    if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
+        raise ValueError("Only one input parameter can be a numpy array.")
     r = -re * np.cos(theta) + np.sqrt(
         (re * np.cos(theta)) ** 2 + alt**2 + 2 * alt * re
     )

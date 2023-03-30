@@ -1,6 +1,7 @@
 import itertools
 from multiprocessing import cpu_count, Pool
 
+import echaim
 import iricore
 # import echaim
 import numpy as np
@@ -22,7 +23,6 @@ def interp_val(data1, data2, dt1, dt2, dt):
     """
     if dt1 == dt2:
         return data1
-
 
     x = np.asarray([0, (dt2 - dt1).total_seconds()])
     y = np.asarray([data1, data2])
@@ -72,6 +72,24 @@ def calc_refatt_par(func, el, az, freqs, pbar_desc, **kwargs):
             )
         )
     return np.array(res)
+
+
+def echaim_density_path_star(pars):
+    return echaim.density_path(*pars)
+
+
+def parallel_echaim_density_path(slat, slon, heights, dt):
+    nproc = cpu_count()
+    nbatches = nproc
+    blat = np.array_split(slat, nbatches)
+    blon = np.array_split(slon, nbatches)
+    bheights = np.array_split(heights, nbatches)
+    with Pool(processes=nproc) as pool:
+        res = list(pool.imap(
+                echaim_density_path_star,
+                zip(blat, blon, bheights, itertools.repeat(dt))
+        ))
+    return np.hstack(res)
 
 
 def calc_interp_val(el, az, funcs, dts, *args, **kwargs):

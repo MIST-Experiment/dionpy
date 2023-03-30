@@ -9,14 +9,16 @@ from multiprocessing import cpu_count, Pool
 from typing import Tuple, Callable, Union, List, Sequence
 
 import h5py
+import iricore
 import numpy as np
+import pymap3d as pm
 from tqdm import tqdm
 
 from .DLayer import DLayer
 from .FLayer import FLayer
-from .modules.helpers import none_or_array, elaz_mesh, TextColor, pic2vid
-from .modules.ion_tools import trop_refr
-from .modules.parallel import calc_refatt_par, calc_refatt
+from .modules.helpers import none_or_array, elaz_mesh, TextColor, pic2vid, Ellipsoid
+from .modules.ion_tools import trop_refr, srange
+from .modules.parallel import calc_refatt_par, calc_refatt, parallel_echaim_density_path
 from .modules.plotting import polar_plot_star, polar_plot
 
 
@@ -45,21 +47,21 @@ class IonFrame:
     """
 
     def __init__(
-        self,
-        dt: datetime,
-        position: Sequence[float, float, float],
-        nside: int = 64,
-        dbot: float = 60,
-        dtop: float = 90,
-        ndlayers: int = 100,
-        fbot: float = 150,
-        ftop: float = 500,
-        nflayers: int = 100,
-        iriversion: int = 20,
-        autocalc: bool = True,
-        _pbar: bool = False,
-        _pool: Union[Pool, None] = None,
-        _apf107_args: List | None = None
+            self,
+            dt: datetime,
+            position: Sequence[float, float, float],
+            nside: int = 64,
+            dbot: float = 60,
+            dtop: float = 90,
+            ndlayers: int = 100,
+            fbot: float = 150,
+            ftop: float = 500,
+            nflayers: int = 100,
+            iriversion: int = 20,
+            autocalc: bool = True,
+            _pbar: bool = False,
+            _pool: Union[Pool, None] = None,
+            _apf107_args: List | None = None
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -106,12 +108,12 @@ class IonFrame:
         return np.rad2deg(trop_refr(np.deg2rad(90 - el)))
 
     def refr(
-        self,
-        el: float | np.ndarray,
-        az: float | np.ndarray,
-        freq: float | np.ndarray,
-        troposphere: bool = True,
-        _pbar_desc: str | None = None,
+            self,
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            freq: float | np.ndarray,
+            troposphere: bool = True,
+            _pbar_desc: str | None = None,
     ):
         """
         :param el: Elevation of observation(s) in [deg].
@@ -127,13 +129,13 @@ class IonFrame:
         )
 
     def atten(
-        self,
-        el: float | np.ndarray,
-        az: float | np.ndarray,
-        freq: float | np.ndarray,
-        _pbar_desc: str | None = None,
-        col_freq: str = "default",
-        troposphere: bool = True,
+            self,
+            el: float | np.ndarray,
+            az: float | np.ndarray,
+            freq: float | np.ndarray,
+            _pbar_desc: str | None = None,
+            col_freq: str = "default",
+            troposphere: bool = True,
     ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -156,6 +158,70 @@ class IonFrame:
             col_freq=col_freq,
             troposphere=troposphere,
         )
+
+    def radec2altaz(self, ra: float | np.ndarray, dec: float | np.ndarray):
+        """
+        Converts sky coordinates to altitude and azimuth angles in horizontal CS.
+
+        :param ra: Right ascension in [deg].
+        :param dec: Declination in [deg].
+        :return: [alt, az], both in [deg]
+        """
+        from astropy.coordinates import EarthLocation, SkyCoord, AltAz
+        from astropy.time import Time
+        from astropy import units as u
+
+        location = EarthLocation(lat=self.position[0], lon=self.position[0], height=self.position[2] * u.m)
+        time = Time(self.dt)
+        altaz_cs = AltAz(location=location, obstime=time)
+        skycoord = SkyCoord(ra * u.deg, dec * u.deg)
+        aa_coord = skycoord.transform_to(altaz_cs)
+        return aa_coord.alt.value, aa_coord.az.value
+
+    def stec(self, alt: float, az: float, hbot: float = 90, htop: float = 2000, npoints: int = 500) -> float:
+        """
+        Calculates slant tec in a given direction using the IRI model.
+
+        :param alt: Altitude angle.
+        :param az: Azimuth angle.
+        :param hbot: Bottom height limit for integration.
+        :param htop: Top height limit for integration.
+        :param npoints: Number of points to integrate.
+        :return: Total electron content along the line of sight in TECU (10^16 m-2).
+        """
+        hstep = (htop - hbot) / npoints
+        heights = np.linspace(hbot, htop, npoints)
+        rslant = srange(np.deg2rad(90 - alt), heights * 1e3)
+        ell = Ellipsoid()
+        slat, slon, _ = pm.aer2geodetic(az, alt, rslant, *self.position, ell=ell)
+        ne = iricore.STEC(self.dt, heights, slat, slon, version=self.iriversion)
+        ne = np.where(np.isnan(ne), 0, ne)
+        ne = np.where(np.isinf(ne), 0, ne)
+        ne_ = ne - np.roll(ne, -1)
+        ne = np.where(ne_ > 1e3, np.roll(ne, 1), ne)
+        res = np.sum(ne) * hstep * 1e3 * 1e-16
+        return res
+
+    def stec_echaim(self, alt: float, az: float, hbot: float = 90, htop: float = 2000, npoints: int = 500) -> float:
+        """
+        Calculates slant tec in a given direction using the E-CHAIM model.
+
+        :param alt: Altitude angle.
+        :param az: Azimuth angle.
+        :param hbot: Bottom height limit for integration.
+        :param htop: Top height limit for integration.
+        :param npoints: Number of points to integrate.
+        :return: Total electron content along the line of sight in TECU (10^16 m-2).
+        """
+        hstep = (htop - hbot) / npoints
+        heights = np.linspace(hbot, htop, npoints)
+        rslant = srange(np.deg2rad(90 - alt), heights * 1e3)
+        ell = Ellipsoid()
+        slat, slon, _ = pm.aer2geodetic(az, alt, rslant, *self.position, ell=ell)
+        if np.any(slat < 55):
+            raise ValueError("Cannot apply the E-CHAIM model to this particular direction.")
+        ne = parallel_echaim_density_path(slat, slon, heights, self.dt)
+        return np.sum(ne) * hstep * 1e3 * 1e-16
 
     def write_self_to_file(self, file: h5py.File):
         h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
@@ -322,7 +388,7 @@ class IonFrame:
         )
 
     def plot_atten(
-        self, freq: float, troposphere: bool = True, gridsize: int = 200, **kwargs
+            self, freq: float, troposphere: bool = True, gridsize: int = 200, **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -346,12 +412,12 @@ class IonFrame:
         )
 
     def plot_refr(
-        self,
-        freq: float,
-        troposphere: bool = True,
-        gridsize: int = 200,
-        cmap: str = "viridis_r",
-        **kwargs,
+            self,
+            freq: float,
+            troposphere: bool = True,
+            gridsize: int = 200,
+            cmap: str = "viridis_r",
+            **kwargs,
     ):
         """
         Visualize ionospheric refraction.
@@ -398,20 +464,20 @@ class IonFrame:
         )
 
     def _freq_animation(
-        self,
-        func: Callable,
-        saveto: str,
-        freqrange: Tuple[float, float] = (45, 125),
-        gridsize: int = 200,
-        fps: int = 20,
-        duration: int = 5,
-        title: str | None = None,
-        barlabel: str | None = None,
-        plotlabel: str | None = None,
-        dpi: int = 300,
-        cmap: str = "viridis",
-        cbformat: str = "%.2f",
-        pbar_label: str = "",
+            self,
+            func: Callable,
+            saveto: str,
+            freqrange: Tuple[float, float] = (45, 125),
+            gridsize: int = 200,
+            fps: int = 20,
+            duration: int = 5,
+            title: str | None = None,
+            barlabel: str | None = None,
+            plotlabel: str | None = None,
+            dpi: int = 300,
+            cmap: str = "viridis",
+            cbformat: str = "%.2f",
+            pbar_label: str = "",
     ):
         print(
             TextColor.BOLD
@@ -467,12 +533,12 @@ class IonFrame:
         return
 
     def animate_atten_vs_freq(
-        self,
-        saveto: str = "./atten_vs_freq",
-        freqrange: Tuple[float, float] = (45, 125),
-        fps: int = 20,
-        duration: int = 5,
-        **kwargs,
+            self,
+            saveto: str = "./atten_vs_freq",
+            freqrange: Tuple[float, float] = (45, 125),
+            fps: int = 20,
+            duration: int = 5,
+            **kwargs,
     ):
         """
         Generates an animation of attenuation change with frequency.
@@ -495,13 +561,13 @@ class IonFrame:
         )
 
     def animate_refr_vs_freq(
-        self,
-        saveto: str = "./refr_vs_freq",
-        freqrange: Tuple[float, float] = (45, 125),
-        fps: int = 20,
-        duration: int = 5,
-        cmap="viridis_r",
-        **kwargs,
+            self,
+            saveto: str = "./refr_vs_freq",
+            freqrange: Tuple[float, float] = (45, 125),
+            fps: int = 20,
+            duration: int = 5,
+            cmap="viridis_r",
+            **kwargs,
     ):
         """
         Generates an animation of refraction angle change with frequency.
