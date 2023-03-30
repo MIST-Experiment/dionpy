@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import List, Callable
+from typing import List, Callable, Sequence
 import warnings
 
 import numpy as np
@@ -40,6 +40,7 @@ class IonModel:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                     the last two digits of the IRI version number. For example, version 20 refers
                     to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
     """
 
@@ -47,7 +48,7 @@ class IonModel:
             self,
             dt_start: datetime,
             dt_end: datetime,
-            position: List[float, float, float],
+            position: Sequence[float, float, float],
             mpf: int = 15,
             nside: int = 64,
             dbot: float = 60,
@@ -57,6 +58,7 @@ class IonModel:
             ftop: float = 500,
             nflayers: int = 100,
             iriversion: int = 20,
+            echaim: bool = False,
             autocalc: bool = True,
     ):
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
@@ -107,6 +109,7 @@ class IonModel:
                         ftop,
                         nflayers,
                         iriversion,
+                        echaim=echaim,
                         autocalc=autocalc,
                         _pbar=False,
                         _pool=pool,

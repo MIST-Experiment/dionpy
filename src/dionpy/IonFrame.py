@@ -9,9 +9,7 @@ from multiprocessing import cpu_count, Pool
 from typing import Tuple, Callable, Union, List, Sequence
 
 import h5py
-import iricore
 import numpy as np
-import pymap3d as pm
 from tqdm import tqdm
 
 from .DLayer import DLayer
@@ -42,26 +40,28 @@ class IonFrame:
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
     :param _pbar: If True - a progress bar will appear.
     """
 
     def __init__(
-            self,
-            dt: datetime,
-            position: Sequence[float, float, float],
-            nside: int = 64,
-            dbot: float = 60,
-            dtop: float = 90,
-            ndlayers: int = 100,
-            fbot: float = 150,
-            ftop: float = 500,
-            nflayers: int = 100,
-            iriversion: int = 20,
-            autocalc: bool = True,
-            _pbar: bool = False,
-            _pool: Union[Pool, None] = None,
-            _apf107_args: List | None = None
+        self,
+        dt: datetime,
+        position: Sequence[float, float, float],
+        nside: int = 64,
+        dbot: float = 60,
+        dtop: float = 90,
+        ndlayers: int = 100,
+        fbot: float = 150,
+        ftop: float = 500,
+        nflayers: int = 100,
+        iriversion: int = 20,
+        echaim: bool = False,
+        autocalc: bool = True,
+        _pbar: bool = False,
+        _pool: Union[Pool, None] = None,
+        _apf107_args: List | None = None
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -71,10 +71,10 @@ class IonFrame:
         self.nside = nside
         self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, iriversion, autocalc, _pbar, _pool, _apf107_args,
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, echaim, autocalc, _pbar, _pool, _apf107_args,
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, iriversion, autocalc, _pbar, _pool, _apf107_args,
+            dt, position, fbot, ftop, nflayers, nside, iriversion, echaim, autocalc, _pbar, _pool, _apf107_args,
         )
 
     def calc(self, pbar: bool = False):
@@ -129,13 +129,13 @@ class IonFrame:
         )
 
     def atten(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            freq: float | np.ndarray,
-            _pbar_desc: str | None = None,
-            col_freq: str = "default",
-            troposphere: bool = True,
+        self,
+        el: float | np.ndarray,
+        az: float | np.ndarray,
+        freq: float | np.ndarray,
+        _pbar_desc: str | None = None,
+        col_freq: str = "default",
+        troposphere: bool = True,
     ) -> float | np.ndarray:
         """
         :param el: Elevation of observation(s) in [deg].
@@ -240,11 +240,10 @@ class IonFrame:
         meta.attrs["fbot"] = self.flayer.hbot
         meta.attrs["ftop"] = self.flayer.htop
 
-        if np.average(self.dlayer.edens) > 0 and np.average(self.flayer.edens) > 0:
-            grp.create_dataset("dedens", data=self.dlayer.edens)
-            grp.create_dataset("detemp", data=self.dlayer.etemp)
-            grp.create_dataset("fedens", data=self.flayer.edens)
-            grp.create_dataset("fetemp", data=self.flayer.etemp)
+        grp.create_dataset("dedens", data=self.dlayer.edens)
+        grp.create_dataset("detemp", data=self.dlayer.etemp)
+        grp.create_dataset("fedens", data=self.flayer.edens)
+        grp.create_dataset("fetemp", data=self.flayer.etemp)
 
     def save(self, saveto: str = "./ionframe"):
         """
@@ -266,7 +265,7 @@ class IonFrame:
     def read_self_from_file(cls, grp: h5py.Group):
         meta = grp.get("meta")
         obj = cls(
-            autocalc=False,
+            _autocalc=False,
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
             position=meta.attrs["position"],
             nside=meta.attrs["nside"],
@@ -388,7 +387,7 @@ class IonFrame:
         )
 
     def plot_atten(
-            self, freq: float, troposphere: bool = True, gridsize: int = 200, **kwargs
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None,  **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -396,11 +395,14 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
         atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
+        cblim = cblim or [None, 1]
         # atten_db = 20 * np.log10(atten)
         # barlabel = r"dB"
         return polar_plot(
@@ -408,16 +410,48 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             freq=freq,
+            cmap=cmap,
+            cblim=cblim,
+            **kwargs,
+        )
+
+    def plot_emiss(
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None, **kwargs
+    ):
+        """
+        Visualize ionospheric attenuation.
+
+        :param freq: Frequency of observation in [Hz].
+        :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
+        :param kwargs: See `dionpy.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
+        el, az = elaz_mesh(gridsize)
+        _, emiss = self.dlayer.atten(el, az, freq, troposphere=troposphere, emission=True)
+        cblim = cblim or [0, None]
+        barlabel = r"$K$"
+        return polar_plot(
+            (np.deg2rad(az), 90 - el, emiss),
+            dt=self.dt,
+            pos=self.position,
+            freq=freq,
+            barlabel=barlabel,
+            cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 
     def plot_refr(
-            self,
-            freq: float,
-            troposphere: bool = True,
-            gridsize: int = 200,
-            cmap: str = "viridis_r",
-            **kwargs,
+        self,
+        freq: float,
+        troposphere: bool = True,
+        gridsize: int = 200,
+        cmap: str = 'viridis_r',
+        cblim=None,
+        **kwargs,
     ):
         """
         Visualize ionospheric refraction.
@@ -426,9 +460,11 @@ class IonFrame:
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
+        cblim = cblim or [0, None]
         el, az = elaz_mesh(gridsize)
         refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
@@ -439,10 +475,11 @@ class IonFrame:
             freq=freq,
             barlabel=barlabel,
             cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 
-    def plot_troprefr(self, gridsize=200, cmap="viridis_r", **kwargs):
+    def plot_troprefr(self, gridsize=200, cmap="viridis_r", cblim=None, **kwargs):
         """
         Visualize tropospheric refraction.
 
@@ -453,6 +490,7 @@ class IonFrame:
         """
         el, az = elaz_mesh(gridsize)
         troprefr = self.troprefr(el)
+        cblim = cblim or [0, None]
         barlabel = r"$deg$"
         return polar_plot(
             (np.deg2rad(az), 90 - el, troprefr),

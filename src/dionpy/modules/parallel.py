@@ -3,7 +3,7 @@ from multiprocessing import cpu_count, Pool
 
 import echaim
 import iricore
-# import echaim
+import echaim
 import numpy as np
 from scipy.interpolate import interp1d
 from tqdm import tqdm
@@ -11,6 +11,10 @@ from tqdm import tqdm
 
 def iri_star(pars):
     return iricore.IRI(*pars)
+
+
+def echaim_star(pars):
+    return echaim.density_profile(*pars)
 
 
 # def echaim_star(pars):

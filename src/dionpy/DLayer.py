@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Sequence
 
 import numpy as np
 from numpy import ndarray
@@ -27,6 +27,7 @@ class DLayer(IonLayer):
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
+    :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
     :param pbar: If True - a progress bar will appear.
     """
@@ -34,12 +35,13 @@ class DLayer(IonLayer):
     def __init__(
             self,
             dt: datetime,
-            position: Tuple[float, float, float],
+            position: Sequence[float, float, float],
             hbot: float = 60,
             htop: float = 90,
             nlayers: int = 100,
             nside: int = 64,
             iriversion: int = 20,
+            echaim: bool = False,
             autocalc: bool = True,
             pbar: bool = True,
             _pool: Union[Pool, None] = None,
@@ -52,10 +54,11 @@ class DLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=12,
+            rdeg=15,
             pbar=pbar,
             name="D layer",
             iriversion=iriversion,
+            echaim=echaim,
             autocalc=autocalc,
             _pool=_pool,
             _apf107_args=_apf107_args,
@@ -82,7 +85,6 @@ class DLayer(IonLayer):
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
-        # TODO: Add depedency on instrument height
         freq *= 1e6
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
@@ -107,7 +109,7 @@ class DLayer(IonLayer):
             theta += dtheta
             el -= np.rad2deg(dtheta)
 
-        c = 2.99792458e8  # speed of light
+        c = 2.99792458e8
 
         for i in range(self.nlayers):
             freq_c = col_model(heights_km[i])
@@ -115,10 +117,11 @@ class DLayer(IonLayer):
             det = self.et(el, az, layer=i)
             freq_p = plasfreq(ded)
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
-            atten[:, :, i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
-            emiss[:, :, i] = (1 - atten[:, :, i]) * det
+            atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
+            emiss[..., i] = (1 - atten[..., i]) * det
 
         atten = atten.prod(axis=2)
+        emiss = emiss.sum(axis=-1)
 
         if atten.size == 1:
             atten = atten[0, 0]
