@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Tuple, Iterable, List, Sequence
+from typing import Iterable, Sequence
 
 import healpy as hp
 import numpy as np
@@ -76,7 +76,7 @@ def sky2ll(
     el: float | np.ndarray,
     az: float | np.ndarray,
     height: float,
-    pos: Tuple[float, float, float],
+    pos: Sequence[float, float, float],
 ) -> [float | np.ndarray, float | np.ndarray]:
     """
     Converts visible elevation and azimuth to geographic coordinates with given height of the visible point.

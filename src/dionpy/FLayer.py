@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Tuple, List, Union, Sequence
+from typing import List, Union, Sequence
 
 import numpy as np
 import pymap3d as pm

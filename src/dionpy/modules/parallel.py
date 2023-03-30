@@ -1,7 +1,6 @@
 import itertools
 from multiprocessing import cpu_count, Pool
 
-import echaim
 import iricore
 import echaim
 import numpy as np

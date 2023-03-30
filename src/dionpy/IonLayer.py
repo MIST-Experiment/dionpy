@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, List, Union, Sequence
+from typing import List, Union, Sequence
 
 import healpy as hp
 import iricore

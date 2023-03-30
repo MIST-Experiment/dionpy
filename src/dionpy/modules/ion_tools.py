@@ -6,7 +6,7 @@ np.seterr(invalid="ignore")
 
 
 def srange(
-    theta: float | np.ndarray, alt: float | np.ndarray, re: float = 6378100
+        theta: float | np.ndarray, alt: float | np.ndarray, re: float = 6378100
 ) -> float | np.ndarray:
     """
     :param theta: Zenith angle in [rad].
@@ -17,7 +17,7 @@ def srange(
     if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
         raise ValueError("Only one input parameter can be a numpy array.")
     r = -re * np.cos(theta) + np.sqrt(
-        (re * np.cos(theta)) ** 2 + alt**2 + 2 * alt * re
+        (re * np.cos(theta)) ** 2 + alt ** 2 + 2 * alt * re
     )
     return r
 
@@ -35,7 +35,7 @@ def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
             "Number density cannot be < 0. Most probably iricore does not include data for the specified date. Please "
             "update the library by calling iricore.update()."
         )
-    return 1 / (2 * np.pi) * np.sqrt((n_e * e**2) / (m_e * epsilon0))
+    return 1 / (2 * np.pi) * np.sqrt((n_e * e ** 2) / (m_e * epsilon0))
 
 
 def refr_index(n_e: float | np.ndarray, freq: float):
@@ -49,11 +49,10 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     return np.sqrt(1 - (nu_p / freq) ** 2)
 
 
-
 def refr_angle(
-    n1: float | np.ndarray,
-    n2: float | np.ndarray,
-    phi: float | np.ndarray,
+        n1: float | np.ndarray,
+        n2: float | np.ndarray,
+        phi: float | np.ndarray,
 ) -> float | np.ndarray:
     """
     Snell's law.
@@ -77,7 +76,7 @@ def trop_refr(theta: float | np.ndarray) -> float | np.ndarray:
     a = 16709.51
     b = -19066.21
     c = 5396.33
-    return 1 / (a + b * theta + c * theta**2)
+    return 1 / (a + b * theta + c * theta ** 2)
 
 #
 # def _d_atten_low(freq, theta, h_d, delta_hd, freq_p, freq_c):

@@ -267,7 +267,7 @@ class IonFrame:
     def read_self_from_file(cls, grp: h5py.Group):
         meta = grp.get("meta")
         obj = cls(
-            _autocalc=False,
+            autocalc=False,
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
             position=meta.attrs["position"],
             nside=meta.attrs["nside"],
@@ -487,6 +487,7 @@ class IonFrame:
 
         :param gridsize: Grid resolution of the plot.
         :param cmap: A colormap to use in the plot.
+        :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
@@ -500,6 +501,7 @@ class IonFrame:
             pos=self.position,
             barlabel=barlabel,
             cmap=cmap,
+            cblim=cblim,
             **kwargs,
         )
 

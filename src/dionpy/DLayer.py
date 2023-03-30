@@ -76,8 +76,8 @@ class DLayer(IonLayer):
         """
         :param el: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
-        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on all
-                     available cores. Requires `dt` to be a single datetime object.
+        :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on
+                     all available cores. Requires `dt` to be a single datetime object.
         :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
                          or float in Hz.
         :param emission: If True - also returns array of emission temperatures.
