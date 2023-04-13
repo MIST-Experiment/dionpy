@@ -98,8 +98,7 @@ class IonFrame:
         else:
             return calc_refatt(func, el, az, freq, **kwargs)
 
-    @staticmethod
-    def troprefr(el: float | np.ndarray) -> float | np.ndarray:
+    def troprefr(self, el: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
         https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
@@ -107,7 +106,7 @@ class IonFrame:
         :param el: Elevation of observation(s) in [deg].
         :return: Refraction in the troposphere in [deg].
         """
-        return np.rad2deg(trop_refr(np.deg2rad(90 - el)))
+        return trop_refr(el, self.position[2]*1e-3)
 
     def refr(
             self,
