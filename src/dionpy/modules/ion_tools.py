@@ -65,16 +65,16 @@ def refr_angle(
     return np.arcsin(n1 / n2 * np.sin(phi))
 
 
-def trop_refr(theta: float | np.ndarray, h: float) -> float | np.ndarray:
+def trop_refr(el: float | np.ndarray, h: float) -> float | np.ndarray:
     """
     Approximation of the refraction in the troposphere recommended by the ITU-R:
     https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
 
-    :param theta: Zenith angle in radians.
+    :param el: Elevation angle in [deg].
     :param h: Height of instrument in [km].
     :return: Change of the angle theta due to tropospheric refraction (in radians).
     """
-    t1 = 1.314 + 0.6437 * theta + 0.02869 * theta**2
-    t2 = 0.2305 + 0.09428 * theta + 0.01096 * theta**2
+    t1 = 1.314 + 0.6437 * el + 0.02869 * el**2
+    t2 = 0.2305 + 0.09428 * el + 0.01096 * el**2
     return 1 / (t1 + h * t2 + h**2 * 0.08583)
 

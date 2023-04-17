@@ -88,11 +88,9 @@ class FLayer(IonLayer):
         inf_theta_mask = 0 * el
         nan_theta_mask = 0 * el
 
-        theta = np.deg2rad(90 - el)
         if troposphere:
-            dtheta = trop_refr(theta)
-            theta += dtheta
-            el -= np.rad2deg(dtheta)
+            dtheta = trop_refr(el, self.position[-1]*1e-3)
+            el -= dtheta
 
         # Distance from telescope to first layer
         r_slant = srange(np.deg2rad(90 - el), f_heights[0] - self.position[2])

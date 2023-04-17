@@ -105,9 +105,9 @@ class DLayer(IonLayer):
 
         theta = np.deg2rad(90 - el)
         if troposphere:
-            dtheta = trop_refr(theta)
-            theta += dtheta
-            el -= np.rad2deg(dtheta)
+            dtheta = trop_refr(el, self.position[-1]*1e-3)
+            theta += np.deg2rad(dtheta)
+            el -= dtheta
 
         c = 2.99792458e8
 
