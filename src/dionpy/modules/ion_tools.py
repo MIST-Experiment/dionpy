@@ -76,8 +76,5 @@ def trop_refr(theta: float | np.ndarray, h: float) -> float | np.ndarray:
     """
     t1 = 1.314 + 0.6437 * theta + 0.02869 * theta**2
     t2 = 0.2305 + 0.09428 * theta + 0.01096 * theta**2
-    # t3 = 0.01727 + 0.008288 * theta
-    print(theta)
-    print(t1 + h * t2 + h**2 * 0.08583)
     return 1 / (t1 + h * t2 + h**2 * 0.08583)
 
