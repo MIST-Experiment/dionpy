@@ -388,7 +388,7 @@ class IonFrame:
         )
 
     def plot_atten(
-        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None,  **kwargs
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='Purples_r', cblim=None,  **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -417,7 +417,7 @@ class IonFrame:
         )
 
     def plot_emiss(
-        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='viridis', cblim=None, **kwargs
+        self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='Oranges', cblim=None, **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -450,7 +450,7 @@ class IonFrame:
         freq: float,
         troposphere: bool = True,
         gridsize: int = 200,
-        cmap: str = 'viridis_r',
+        cmap: str = 'Greens',
         cblim=None,
         **kwargs,
     ):
@@ -480,7 +480,7 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_troprefr(self, gridsize=200, cmap="viridis_r", cblim=None, **kwargs):
+    def plot_troprefr(self, gridsize=200, cmap="Greens", cblim=None, **kwargs):
         """
         Visualize tropospheric refraction.
 

@@ -449,24 +449,6 @@ files = [
 ]
 
 [[package]]
-name = "cmasher"
-version = "1.6.3"
-description = "Scientific colormaps for making accessible, informative and 'cmashing' plots"
-category = "dev"
-optional = false
-python-versions = ">=3.6, <4"
-files = [
-    {file = "cmasher-1.6.3-py3-none-any.whl", hash = "sha256:5d856d24e03f04fb7b2b38c7ca4a8081516b2774d0fa30c6140e94d5153e8066"},
-    {file = "cmasher-1.6.3.tar.gz", hash = "sha256:242e206e58ad6115ff0a5a5405a1ddae80efd1cb03a06dc23db44e710e7c9f23"},
-]
-
-[package.dependencies]
-colorspacious = ">=1.1.0"
-e13tools = ">=0.9.4"
-matplotlib = ">=2.2.4"
-numpy = ">=1.16.0"
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -477,21 +459,6 @@ files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-
-[[package]]
-name = "colorspacious"
-version = "1.1.2"
-description = "A powerful, accurate, and easy-to-use Python library for doing colorspace conversions"
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "colorspacious-1.1.2-py2.py3-none-any.whl", hash = "sha256:c78befa603cea5dccb332464e7dd29e96469eebf6cd5133029153d1e69e3fd6f"},
-    {file = "colorspacious-1.1.2.tar.gz", hash = "sha256:5e9072e8cdca889dac445c35c9362a22ccf758e97b00b79ff0d5a7ba3e11b618"},
-]
-
-[package.dependencies]
-numpy = "*"
 
 [[package]]
 name = "comm"
@@ -663,22 +630,6 @@ files = [
     {file = "docutils-0.18.1-py2.py3-none-any.whl", hash = "sha256:23010f129180089fbcd3bc08cfefccb3b890b0050e1ca00c867036e9d161b98c"},
     {file = "docutils-0.18.1.tar.gz", hash = "sha256:679987caf361a7539d76e584cbeddc311e3aee937877c87346f31debc63e9d06"},
 ]
-
-[[package]]
-name = "e13tools"
-version = "0.9.6"
-description = "A collection of utility functions"
-category = "dev"
-optional = false
-python-versions = ">=3.6, <4"
-files = [
-    {file = "e13tools-0.9.6-py3-none-any.whl", hash = "sha256:2611f98c176f6fdaecba50ffeeb37c639a921331098bb8c0569773b699cea89b"},
-    {file = "e13tools-0.9.6.tar.gz", hash = "sha256:1c6eab60825a644e4a47f65dc692c0474552c5f0180f2d5a7fc5730e2954d0f5"},
-]
-
-[package.dependencies]
-matplotlib = ">=2.2.4"
-numpy = ">=1.16.0"
 
 [[package]]
 name = "echaim"
@@ -3300,4 +3251,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8, <3.12"
-content-hash = "c2ee096665be23193492c90f1874dca28866d949eaea576f0c99b735029f29de"
+content-hash = "fe5412c65cdb9339f37bc2b33e8bc1820fcc7bc163570c25bdecfcefb6ee3093"
