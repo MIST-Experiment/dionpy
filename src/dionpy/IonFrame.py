@@ -307,12 +307,13 @@ class IonFrame:
             obj = cls.read_self_from_file(grp)
         return obj
 
-    def plot_ded(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+    def plot_ded(self, gridsize: int = 200, layer: int | None = None, cmap='plasma', **kwargs):
         """
         Visualize electron density in the D layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param cmap: A colormap to use in the plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
@@ -324,15 +325,17 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
+            cmap=cmap,
             **kwargs,
         )
 
-    def plot_det(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+    def plot_det(self, gridsize: int = 200, layer: int | None = None, cmap='viridis', **kwargs):
         """
         Visualize electron temperature in the D layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param cmap: A colormap to use in the plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
@@ -344,15 +347,17 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
+            cmap=cmap,
             **kwargs,
         )
 
-    def plot_fed(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+    def plot_fed(self, gridsize: int = 200, layer: int | None = None, cmap='plasma', **kwargs):
         """
         Visualize electron density in the F layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param cmap: A colormap to use in the plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
@@ -364,15 +369,17 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
+            cmap=cmap,
             **kwargs,
         )
 
-    def plot_fet(self, gridsize: int = 200, layer: int | None = None, **kwargs):
+    def plot_fet(self, gridsize: int = 200, layer: int | None = None, cmap='viridis', **kwargs):
         """
         Visualize electron temperature in the F layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specfic layer to plot. If None - an average of all layers is calculated.
+        :param cmap: A colormap to use in the plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
@@ -384,6 +391,7 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
+            cmap=cmap,
             **kwargs,
         )
 
