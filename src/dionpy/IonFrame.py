@@ -339,7 +339,7 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        barlabel = r"$K^\circ$"
+        barlabel = "K"
         el, az = elaz_mesh(gridsize)
         det = self.dlayer.et(el, az, layer)
         return polar_plot(
@@ -383,7 +383,7 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        barlabel = r"$K^\circ$"
+        barlabel = r"K"
         el, az = elaz_mesh(gridsize)
         fet = self.flayer.et(el, az, layer)
         return polar_plot(
