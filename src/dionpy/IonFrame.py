@@ -6,10 +6,10 @@ import shutil
 import tempfile
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import Tuple, Callable, Union, List, Sequence
+from typing import Tuple, Callable, Union, List, Sequence, Literal
 
 import h5py
-import iricore
+import iricore as iri
 import numpy as np
 import pymap3d as pm
 from tqdm import tqdm
@@ -58,12 +58,11 @@ class IonFrame:
         fbot: float = 150,
         ftop: float = 500,
         nflayers: int = 100,
-        iriversion: int = 20,
+        iriversion: Literal[16, 20] = 20,
         echaim: bool = False,
         autocalc: bool = True,
         _pbar: bool = False,
         _pool: Union[Pool, None] = None,
-        _apf107_args: List | None = None
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -73,10 +72,10 @@ class IonFrame:
         self.nside = nside
         self.iriversion = iriversion
         self.dlayer = DLayer(
-            dt, position, dbot, dtop, ndlayers, nside, iriversion, echaim, autocalc, _pbar, _pool, _apf107_args,
+            dt, position, dbot, dtop, ndlayers, nside, iriversion, echaim, autocalc, _pbar, _pool,
         )
         self.flayer = FLayer(
-            dt, position, fbot, ftop, nflayers, nside, iriversion, echaim, autocalc, _pbar, _pool, _apf107_args,
+            dt, position, fbot, ftop, nflayers, nside, iriversion, echaim, autocalc, _pbar, _pool,
         )
 
     def calc(self, pbar: bool = False):
@@ -172,7 +171,7 @@ class IonFrame:
         from astropy.time import Time
         from astropy import units as u
 
-        location = EarthLocation(lat=self.position[0], lon=self.position[0], height=self.position[2] * u.m)
+        location = EarthLocation(lat=self.position[0], lon=self.position[1], height=self.position[2] * u.m)
         time = Time(self.dt)
         altaz_cs = AltAz(location=location, obstime=time)
         skycoord = SkyCoord(ra * u.deg, dec * u.deg)
@@ -190,18 +189,7 @@ class IonFrame:
         :param npoints: Number of points to integrate.
         :return: Total electron content along the line of sight in TECU (10^16 m-2).
         """
-        hstep = (htop - hbot) / npoints
-        heights = np.linspace(hbot, htop, npoints)
-        rslant = srange(np.deg2rad(90 - alt), heights * 1e3)
-        ell = Ellipsoid()
-        slat, slon, _ = pm.aer2geodetic(az, alt, rslant, *self.position, ell=ell)
-        ne = iricore.STEC(self.dt, heights, slat, slon, version=self.iriversion)
-        ne = np.where(np.isnan(ne), 0, ne)
-        ne = np.where(np.isinf(ne), 0, ne)
-        ne_ = ne - np.roll(ne, -1)
-        ne = np.where(ne_ > 1e3, np.roll(ne, 1), ne)
-        res = np.sum(ne) * hstep * 1e3 * 1e-16
-        return res
+        return iri.stec(alt, az, self.dt, self.position, version=self.iriversion)
 
     def stec_echaim(self, alt: float, az: float, hbot: float = 90, htop: float = 2000, npoints: int = 500) -> float:
         """

@@ -45,7 +45,6 @@ class DLayer(IonLayer):
             autocalc: bool = True,
             pbar: bool = True,
             _pool: Union[Pool, None] = None,
-            _apf107_args: List | None = None,
     ):
         super().__init__(
             dt,
@@ -61,7 +60,6 @@ class DLayer(IonLayer):
             echaim=echaim,
             autocalc=autocalc,
             _pool=_pool,
-            _apf107_args=_apf107_args,
         )
 
     def atten(

@@ -10,7 +10,6 @@ from typing import List, Callable, Sequence
 import warnings
 
 import numpy as np
-from iricore import readapf107
 from numpy import ndarray
 from tqdm import tqdm
 
@@ -94,7 +93,6 @@ class IonModel:
             nproc = np.min([cpu_count(), nmodels])
             # nproc = 1
             pool = Pool(processes=nproc)
-            apf107_args = readapf107(self.iriversion)
 
             for dt in tqdm(self._dts, desc="Calculating time frames"):
                 self.models.append(
@@ -113,7 +111,6 @@ class IonModel:
                         autocalc=autocalc,
                         _pbar=False,
                         _pool=pool,
-                        _apf107_args=apf107_args,
                     )
                 )
             pool.close()

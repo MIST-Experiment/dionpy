@@ -44,7 +44,6 @@ class FLayer(IonLayer):
             autocalc: bool = True,
             pbar: bool = True,
             _pool: Union[Pool, None] = None,
-            _apf107_args: List | None = None,
     ):
         super().__init__(
             dt,
@@ -60,7 +59,6 @@ class FLayer(IonLayer):
             echaim=echaim,
             autocalc=autocalc,
             _pool=_pool,
-            _apf107_args=_apf107_args,
         )
 
     def refr(
@@ -82,7 +80,7 @@ class FLayer(IonLayer):
         check_elaz_shape(el, az)
         el, az = el.copy(), az.copy()
         re = 6378100.0
-        ell = Ellipsoid()
+        ell = Ellipsoid(re, re)
         f_heights = np.linspace(self.hbot, self.htop, self.nlayers) * 1e3
         delta_theta = 0 * el
         inf_theta_mask = 0 * el

@@ -6,10 +6,12 @@ from typing import Iterable, Sequence
 import healpy as hp
 import numpy as np
 from ffmpeg_progress_yield import FfmpegProgress
-from pymap3d import aer2geodetic, Ellipsoid as pmEllipsoid
+from pymap3d import aer2geodetic, Ellipsoid
 from tqdm import tqdm
 
 from .ion_tools import srange
+
+R_EARTH = 6378100.0
 
 
 class TextColor:
@@ -27,21 +29,6 @@ class TextColor:
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
     END = "\033[0m"
-
-
-class Ellipsoid(pmEllipsoid):
-    """
-    Custom ellipsoid for pymap3d package. Implements a simple sphere.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.semimajor_axis = 6378100.0
-        self.semiminor_axis = 6378100.0
-        self.flattening = 0.0
-        self.thirdflattening = 0.0
-        self.eccentricity = 0.0
-
 
 def none_or_array(vals: None | Iterable) -> np.ndarray | None:
     """
@@ -88,7 +75,7 @@ def sky2ll(
     :return: Observable geographical latitude and longitude.
     """
     d_srange = srange(np.deg2rad(90 - el), height * 1e3)
-    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, ell=Ellipsoid())
+    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, ell=Ellipsoid(R_EARTH, R_EARTH))
     return obs_lat, obs_lon
 
 

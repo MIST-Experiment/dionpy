@@ -6,7 +6,7 @@ from multiprocessing import cpu_count, Pool
 from typing import List, Union, Sequence
 
 import healpy as hp
-import iricore
+import iricore as iri
 import numpy as np
 from tqdm import tqdm
 
@@ -49,7 +49,6 @@ class IonLayer:
             autocalc: bool = True,
             echaim: bool = False,
             _pool: Union[Pool, None] = None,
-            _apf107_args: List | None = None,
     ):
         self.hbot = hbot
         self.htop = htop
@@ -73,7 +72,7 @@ class IonLayer:
         self.etemp = np.zeros((len(self._obs_pixels), nlayers))
 
         if autocalc:
-            self._calc(pbar=pbar, _pool=_pool, _apf107_args=_apf107_args)
+            self._calc(pbar=pbar, _pool=_pool)
 
     def _batch_split(self, batch):
         nbatches = len(self._obs_pixels) // batch + 1
@@ -82,7 +81,7 @@ class IonLayer:
         blon = np.array_split(self._obs_lons, nbatches)
         return nbatches, nproc, blat, blon
 
-    def _calc(self, pbar=True, _pool: Union[Pool, None] = None, _apf107_args: List | None = None):
+    def _calc(self, pbar=True, _pool: Union[Pool, None] = None):
         """
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
@@ -96,10 +95,10 @@ class IonLayer:
             (self.htop - self.hbot) / (self.nlayers - 1) - 1e-6,
         )
 
-        if _apf107_args is None:
-            aap, af107, nlines = iricore.readapf107(self.iriversion)
-        else:
-            aap, af107, nlines = _apf107_args
+        # if _apf107_args is None:
+        #     aap, af107, nlines = iricore.readapf107(self.iriversion)
+        # else:
+        #     aap, af107, nlines = _apf107_args
 
         # nproc=4
         pool = Pool(processes=nproc) if _pool is None else _pool
@@ -114,9 +113,9 @@ class IonLayer:
                         blon,
                         itertools.repeat(0.0),
                         itertools.repeat(self.iriversion),
-                        itertools.repeat(aap),
-                        itertools.repeat(af107),
-                        itertools.repeat(nlines),
+                        # itertools.repeat(aap),
+                        # itertools.repeat(af107),
+                        # itertools.repeat(nlines),
                     ),
                 ),
                 total=nbatches,
