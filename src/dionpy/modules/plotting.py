@@ -29,6 +29,7 @@ plot_kwargs = {
     "local_time": "Difference between local time and UTC. If specified - local time is shown instead of UTC.",
     "cinfo": "If true - places model info in the centre of the picture.",
     "lfont": "If true - the font size of labels is increased.",
+    "cbar": "If true - a colorbar is added.",
 }
 
 
@@ -50,6 +51,7 @@ def polar_plot(
     local_time: int | None = None,
     cinfo: bool = False,
     lfont: bool = False,
+    cbar: bool = True,
 ):
     """
     A core function for graphic generation on the visible sky field.
@@ -96,7 +98,8 @@ def polar_plot(
     labelsize = 14 if lfont else 11
     ax.tick_params(axis="both", which="major", labelsize=labelsize)
     ax.tick_params(axis="y", which="major", labelcolor=labelcolor)
-    cbar = plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat)
+    if cbar:
+        cbar = plt.colorbar(img, fraction=0.042, pad=0.08, format=cbformat)
     cbar.set_label(label=barlabel, size=labelsize)
     cbar.ax.tick_params(labelsize=labelsize)
     cbar.ax.yaxis.get_offset_text().set_fontsize(labelsize)

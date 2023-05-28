@@ -135,6 +135,7 @@ class IonFrame:
         freq: float | np.ndarray,
         _pbar_desc: str | None = None,
         col_freq: str = "default",
+        emission: bool = True,
         troposphere: bool = True,
     ) -> float | np.ndarray:
         """
@@ -144,6 +145,7 @@ class IonFrame:
                      available cores. Requires `dt` to be a single datetime object.
         :param col_freq: Collision frequency model. Available options: 'default', 'nicolet', 'setty', 'aggrawal',
                          or float in Hz.
+        :param emission: If True - also returns array of emission temperatures.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
@@ -156,6 +158,7 @@ class IonFrame:
             freq,
             _pbar_desc,
             col_freq=col_freq,
+            emission=emission,
             troposphere=troposphere,
         )
 

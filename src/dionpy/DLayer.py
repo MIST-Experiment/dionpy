@@ -118,7 +118,7 @@ class DLayer(IonLayer):
             atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
             emiss[..., i] = (1 - atten[..., i]) * det
 
-        atten = atten.prod(axis=2)
+        atten = atten.prod(axis=-1)
         emiss = emiss.sum(axis=-1)
 
         if atten.size == 1:

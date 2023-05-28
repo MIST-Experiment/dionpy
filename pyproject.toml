@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "0.99.7"
+version = "0.99.8"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -31,7 +31,7 @@ sphinx-autodoc-typehints = "^1.19.1"
 ffmpeg-progress-yield = "^0.3.0"
 sphinxcontrib-bibtex = "^2.5.0"
 setuptools = "^67.6.1"
-iricore = "^1.3.1"
+iricore = "^1.4.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -44,6 +44,8 @@ qrcode = {extras = ["pil"], version = "^7.3.1"}
 #pydarn = "^3.0"
 #psutil = "^5.9.4"
 pandas = "^1.5.3"
+unlzw = "^0.1.1"
+cartopy = "^0.21.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
