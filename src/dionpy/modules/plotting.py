@@ -4,10 +4,12 @@ import os
 from datetime import datetime, timedelta
 from typing import Sequence
 
+from skyfield.api import load, wgs84, utc
 import numpy as np
 from matplotlib import colormaps
 from matplotlib import pyplot as plt
-from matplotlib.ticker import FuncFormatter, ScalarFormatter
+from matplotlib.ticker import FuncFormatter
+
 
 plot_kwargs = {
     "dt": "Datetime object representing a time of an observation. If None - will not be specified under plot.",
@@ -30,6 +32,7 @@ plot_kwargs = {
     "cinfo": "If true - places model info in the centre of the picture.",
     "lfont": "If true - the font size of labels is increased.",
     "cbar": "If true - a colorbar is added.",
+    "sunpos": "If True - the position of the sun is plotted. Dashed line if the Sun is below horizon.",
 }
 
 
@@ -52,6 +55,7 @@ def polar_plot(
     cinfo: bool = False,
     lfont: bool = False,
     cbar: bool = True,
+    sunpos: bool = False,
 ):
     """
     A core function for graphic generation on the visible sky field.
@@ -148,6 +152,24 @@ def polar_plot(
         ax.set_rticks([0, 30, 60, 90])
         ax.grid(linestyle=":", alpha=0.7, color=labelcolor)
 
+    if sunpos:
+        ts = load.timescale()
+        sf_dt = dt.replace(tzinfo=utc)
+        sf_time = ts.from_datetime(sf_dt)
+        sf_pos = wgs84.latlon(pos[0], pos[1])
+        sf_planets = load('de421.bsp')
+        earth, sun = sf_planets['earth'], sf_planets['sun']
+        obs_loc = earth + sf_pos
+        sunalt, sunaz, _ = obs_loc.at(sf_time).observe(sun).apparent().altaz()
+        sunalt, sunaz = sunalt.degrees, sunaz.degrees
+
+        if sunalt < 0:
+            sunalt = np.abs(sunalt)
+            linestyle = ':'
+        else:
+            linestyle = '-'
+        plt.scatter(np.deg2rad(sunaz), 90-sunalt, s=20, facecolors=labelcolor, lw=0)
+        plt.scatter(np.deg2rad(sunaz), 90-sunalt, s=180, facecolors='none', edgecolors=labelcolor, lw=2, linestyle=linestyle)
 
     if saveto is not None:
         head, tail = os.path.split(saveto)

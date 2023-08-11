@@ -3,10 +3,9 @@ from __future__ import annotations
 import itertools
 from datetime import datetime
 from multiprocessing import cpu_count, Pool
-from typing import List, Union, Sequence
+from typing import Union, Sequence
 
 import healpy as hp
-import iricore as iri
 import numpy as np
 from tqdm import tqdm
 
@@ -34,6 +33,7 @@ class IonLayer:
                         to IRI-2020.
     :param autocalc: If True - the model will be calculated immediately after definition.
     """
+
     def __init__(
             self,
             dt: datetime,
@@ -50,6 +50,11 @@ class IonLayer:
             echaim: bool = False,
             _pool: Union[Pool, None] = None,
     ):
+        if echaim:
+            if position[0] - rdeg < 55:
+                raise ValueError(
+                    "The E-CHAIM model does not cover all coordinates needed for the ionosphere model at the "
+                    "specified instrument's position.")
         self.hbot = hbot
         self.htop = htop
         self.nlayers = nlayers
@@ -95,12 +100,6 @@ class IonLayer:
             (self.htop - self.hbot) / (self.nlayers - 1) - 1e-6,
         )
 
-        # if _apf107_args is None:
-        #     aap, af107, nlines = iricore.readapf107(self.iriversion)
-        # else:
-        #     aap, af107, nlines = _apf107_args
-
-        # nproc=4
         pool = Pool(processes=nproc) if _pool is None else _pool
         res = list(
             tqdm(

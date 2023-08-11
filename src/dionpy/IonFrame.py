@@ -97,26 +97,26 @@ class IonFrame:
         else:
             return calc_refatt(func, el, az, freq, **kwargs)
 
-    def troprefr(self, el: float | np.ndarray) -> float | np.ndarray:
+    def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
         https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
 
-        :param el: Elevation of observation(s) in [deg].
+        :param alt: Elevation of observation(s) in [deg].
         :return: Refraction in the troposphere in [deg].
         """
-        return trop_refr(el, self.position[2]*1e-3)
+        return trop_refr(alt, self.position[2]*1e-3)
 
     def refr(
             self,
-            el: float | np.ndarray,
+            alt: float | np.ndarray,
             az: float | np.ndarray,
             freq: float | np.ndarray,
             troposphere: bool = True,
             _pbar_desc: str | None = None,
     ):
         """
-        :param el: Elevation of observation(s) in [deg].
+        :param alt: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
         :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on
                      all available cores. Requires `dt` to be a single datetime object.
@@ -125,12 +125,12 @@ class IonFrame:
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
         return self._parallel_calc(
-            self.flayer.refr, el, az, freq, _pbar_desc, troposphere=troposphere
+            self.flayer.refr, alt, az, freq, _pbar_desc, troposphere=troposphere
         )
 
     def atten(
         self,
-        el: float | np.ndarray,
+        alt: float | np.ndarray,
         az: float | np.ndarray,
         freq: float | np.ndarray,
         _pbar_desc: str | None = None,
@@ -139,7 +139,7 @@ class IonFrame:
         troposphere: bool = True,
     ) -> float | np.ndarray:
         """
-        :param el: Elevation of observation(s) in [deg].
+        :param alt: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
         :param freq: Frequency of observation(s) in [MHz]. If  - the calculation will be performed in parallel on all
                      available cores. Requires `dt` to be a single datetime object.
@@ -153,7 +153,7 @@ class IonFrame:
         """
         return self._parallel_calc(
             self.dlayer.atten,
-            el,
+            alt,
             az,
             freq,
             _pbar_desc,

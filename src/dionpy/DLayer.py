@@ -53,7 +53,7 @@ class DLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=15,
+            rdeg=13,    # Not less than 11!
             pbar=pbar,
             name="D layer",
             iriversion=iriversion,
@@ -64,7 +64,7 @@ class DLayer(IonLayer):
 
     def atten(
             self,
-            el: float | np.ndarray,
+            alt: float | np.ndarray,
             az: float | np.ndarray,
             freq: float | np.ndarray,
             col_freq: str = "default",
@@ -72,7 +72,7 @@ class DLayer(IonLayer):
             troposphere: bool = True,
     ) -> ndarray | Tuple[ndarray, ndarray]:
         """
-        :param el: Elevation of observation(s) in [deg].
+        :param alt: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
         :param freq: Frequency of observation(s) in [MHz]. If array - the calculation will be performed in parallel on
                      all available cores. Requires `dt` to be a single datetime object.
@@ -84,10 +84,10 @@ class DLayer(IonLayer):
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
         freq *= 1e6
-        check_elaz_shape(el, az)
-        el, az = el.copy(), az.copy()
-        atten = np.empty((*el.shape, self.nlayers))
-        emiss = np.empty((*el.shape, self.nlayers))
+        check_elaz_shape(alt, az)
+        alt, az = alt.copy(), az.copy()
+        atten = np.empty((*alt.shape, self.nlayers))
+        emiss = np.empty((*alt.shape, self.nlayers))
         dh = (self.htop - self.hbot) / self.nlayers * 1e3
 
         if col_freq == "default" or "aggrawal":
@@ -101,18 +101,18 @@ class DLayer(IonLayer):
 
         heights_km = np.linspace(self.hbot, self.htop, self.nlayers)
 
-        theta = np.deg2rad(90 - el)
+        theta = np.deg2rad(90 - alt)
         if troposphere:
-            dtheta = trop_refr(el, self.position[-1]*1e-3)
+            dtheta = trop_refr(alt, self.position[-1] * 1e-3)
             theta += np.deg2rad(dtheta)
-            el -= dtheta
+            alt -= dtheta
 
         c = 2.99792458e8
 
         for i in range(self.nlayers):
             freq_c = col_model(heights_km[i])
-            ded = self.ed(el, az, layer=i)
-            det = self.et(el, az, layer=i)
+            ded = self.ed(alt, az, layer=i)
+            det = self.et(alt, az, layer=i)
             freq_p = plasfreq(ded)
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
             atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)

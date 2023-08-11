@@ -52,7 +52,7 @@ class FLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=30,
+            rdeg=24,    # Not less than 23!
             pbar=pbar,
             name="F layer",
             iriversion=iriversion,
@@ -63,13 +63,13 @@ class FLayer(IonLayer):
 
     def refr(
             self,
-            el: float | np.ndarray,
+            alt: float | np.ndarray,
             az: float | np.ndarray,
             freq: float | List | np.ndarray,
             troposphere: bool = True,
     ) -> float | np.ndarray:
         """
-        :param el: Elevation of observation(s) in [deg].
+        :param alt: Elevation of observation(s) in [deg].
         :param az: Azimuth of observation(s) in [deg].
         :param freq: Frequency of observation(s) in [MHz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
@@ -77,24 +77,24 @@ class FLayer(IonLayer):
         """
         # TODO: Fix low frequency cutoff calculation
         freq *= 1e6
-        check_elaz_shape(el, az)
-        el, az = el.copy(), az.copy()
+        check_elaz_shape(alt, az)
+        alt, az = alt.copy(), az.copy()
         re = 6378100.0
         ell = Ellipsoid(re, re)
         f_heights = np.linspace(self.hbot, self.htop, self.nlayers) * 1e3
-        delta_theta = 0 * el
-        inf_theta_mask = 0 * el
-        nan_theta_mask = 0 * el
+        delta_theta = 0 * alt
+        inf_theta_mask = 0 * alt
+        nan_theta_mask = 0 * alt
 
         if troposphere:
-            dtheta = trop_refr(el, self.position[-1]*1e-3)
-            el -= dtheta
+            dtheta = trop_refr(alt, self.position[-1]*1e-3)
+            alt -= dtheta
 
         # Distance from telescope to first layer
-        r_slant = srange(np.deg2rad(90 - el), f_heights[0] - self.position[2])
+        r_slant = srange(np.deg2rad(90 - alt), f_heights[0] - self.position[2])
         # Geodetic coordinates of 'hit point' on the first layer
         lat_ray, lon_ray, _ = pm.aer2geodetic(
-            az, el, r_slant, *self.position, ell=ell
+            az, alt, r_slant, *self.position, ell=ell
         )  # arrays
         # The sides of the 1st triangle
         d_tel = re + self.position[2]  # Distance from Earth center to telescope
@@ -106,11 +106,11 @@ class FLayer(IonLayer):
         theta_inc = np.arccos(costheta_inc)
 
         # Refraction index of air
-        n_cur = np.ones(el.shape)
+        n_cur = np.ones(alt.shape)
 
         # Get IRI info of point
         fed = self.edll(lat_ray, lon_ray, layer=0)
-
+        fed = np.where(fed < 0, 0, fed)
         # Refraction index of 1st point
         n_next = refr_index(fed, freq)
         nan_theta_mask += plasfreq(fed) > freq
@@ -143,7 +143,7 @@ class FLayer(IonLayer):
             else:
                 # Get IRI info of 2nd point
                 fed = self.edll(lat_ray, lon_ray, layer=i)
-
+                fed = np.where(fed < 0, 0, fed)
                 # Refractive indices
                 n_next = refr_index(fed, freq)
                 nan_theta_mask += plasfreq(fed) > freq
