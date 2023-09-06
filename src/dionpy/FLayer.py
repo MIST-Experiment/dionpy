@@ -44,6 +44,7 @@ class FLayer(IonLayer):
             autocalc: bool = True,
             pbar: bool = True,
             _pool: Union[Pool, None] = None,
+            **kwargs
     ):
         super().__init__(
             dt,
@@ -52,13 +53,13 @@ class FLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=24,    # Not less than 23!
             pbar=pbar,
             name="F layer",
             iriversion=iriversion,
             echaim=echaim,
             autocalc=autocalc,
             _pool=_pool,
+            **kwargs,
         )
 
     def refr(

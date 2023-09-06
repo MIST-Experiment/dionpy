@@ -9,8 +9,20 @@ import healpy as hp
 import numpy as np
 from tqdm import tqdm
 
-from .modules.helpers import eval_layer
+from .modules.helpers import eval_layer, nan2zero, R_EARTH
 from .modules.parallel import iri_star, echaim_star
+
+
+def _estimate_ahd(htop: float, hint: float = 0, r: float = R_EARTH*1e-3):
+    """
+    Estimates the angular horizontal distance (ahd) between the top point of an atmospheric
+    layer and the Earth's surface.
+
+    :param htop: The height of the top point of the atmospheric layer.
+    :param hint: The height above the Earth's surface.
+    :param r: The radius of the Earth.
+    """
+    return np.rad2deg(np.arccos(r / (r + hint)) + np.arccos(r / (r + htop)))
 
 
 class IonLayer:
@@ -25,7 +37,7 @@ class IonLayer:
     :param htop: Upper limit in [km] of the D layer of the ionosphere.
     :param nlayers: Number of sub-layers in the D layer for intermediate calculations.
     :param nside: Resolution of healpix grid.
-    :param rdeg: Radius of disc in [deg] queried to healpy (view distance).
+    :param rdeg_offset: Extend radius of coordinate plane in [deg].
     :param pbar: If True - a progress bar will appear.
     :param name: Name of the layer for description use.
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
@@ -42,7 +54,7 @@ class IonLayer:
             htop: float,
             nlayers: int = 100,
             nside: int = 64,
-            rdeg: float = 20,
+            rdeg_offset: float = 5,
             pbar: bool = True,
             name: str | None = None,
             iriversion: int = 20,
@@ -50,11 +62,16 @@ class IonLayer:
             echaim: bool = False,
             _pool: Union[Pool, None] = None,
     ):
+        # TODO: Set offset to 1 for d-layer
+        # TODO: Save a value of rdeg
+        self.rdeg = _estimate_ahd(htop, position[-1]) + rdeg_offset
+
         if echaim:
-            if position[0] - rdeg < 55:
+            if position[0] - self.rdeg < 55:
                 raise ValueError(
                     "The E-CHAIM model does not cover all coordinates needed for the ionosphere model at the "
                     "specified instrument's position.")
+
         self.hbot = hbot
         self.htop = htop
         self.nlayers = nlayers
@@ -64,7 +81,6 @@ class IonLayer:
         self.echaim = echaim
 
         self.nside = nside
-        self.rdeg = rdeg
         self.iriversion = iriversion
         self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
         self._obs_pixels = hp.query_disc(
@@ -110,7 +126,6 @@ class IonLayer:
                         itertools.repeat(heights),
                         blat,
                         blon,
-                        itertools.repeat(0.0),
                         itertools.repeat(self.iriversion),
                         # itertools.repeat(aap),
                         # itertools.repeat(af107),
@@ -126,8 +141,8 @@ class IonLayer:
         if _pool is None:
             pool.close()
 
-        self.edens = np.vstack([r["ne"] for r in res])
-        self.etemp = np.vstack([r["te"] for r in res])
+        self.edens = nan2zero(np.vstack([r.edens for r in res]))
+        self.etemp = nan2zero(np.vstack([r.etemp for r in res]))
         if self.echaim:
             self._calc_echaim(pbar, _pool)
         return
@@ -252,3 +267,6 @@ class IonLayer:
         map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
         map_[self._obs_pixels] = self.etemp[:, layer]
         return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
+
+    def get_heights(self):
+        return np.linspace(self.hbot, self.htop, self.nlayers)

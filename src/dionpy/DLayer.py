@@ -45,6 +45,7 @@ class DLayer(IonLayer):
             autocalc: bool = True,
             pbar: bool = True,
             _pool: Union[Pool, None] = None,
+            **kwargs
     ):
         super().__init__(
             dt,
@@ -53,13 +54,13 @@ class DLayer(IonLayer):
             htop,
             nlayers,
             nside,
-            rdeg=13,    # Not less than 11!
             pbar=pbar,
             name="D layer",
             iriversion=iriversion,
             echaim=echaim,
             autocalc=autocalc,
             _pool=_pool,
+            **kwargs
         )
 
     def atten(
@@ -70,6 +71,7 @@ class DLayer(IonLayer):
             col_freq: str = "default",
             emission: bool = False,
             troposphere: bool = True,
+            height_profile: bool = False,
     ) -> ndarray | Tuple[ndarray, ndarray]:
         """
         :param alt: Elevation of observation(s) in [deg].
@@ -80,11 +82,14 @@ class DLayer(IonLayer):
                          or float in Hz.
         :param emission: If True - also returns array of emission temperatures.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param height_profile: If True - returns height profile of attenuation (+1 dimension).
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
-        freq *= 1e6
+        freq_om = freq * 1e6 * 2 * np.pi    # Converting to angular (omega) frequency and going MHz -> Hz
         check_elaz_shape(alt, az)
+        alt = np.asarray(alt)
+        az = np.asarray(az)
         alt, az = alt.copy(), az.copy()
         atten = np.empty((*alt.shape, self.nlayers))
         emiss = np.empty((*alt.shape, self.nlayers))
@@ -115,14 +120,13 @@ class DLayer(IonLayer):
             det = self.et(alt, az, layer=i)
             freq_p = plasfreq(ded)
             ds = srange(theta, heights_km[i] * 1e3 + 0.5 * dh) - srange(theta, heights_km[i] * 1e3 - 0.5 * dh)
-            atten[..., i] = np.exp(-2 * np.pi * freq_p ** 2 * freq_c * ds / (freq ** 2 + freq_c ** 2) / c)
+            atten[..., i] = np.exp(-0.5 * freq_p**2 / (freq_om**2 + freq_c**2) * freq_c * ds / c)
             emiss[..., i] = (1 - atten[..., i]) * det
 
-        atten = atten.prod(axis=-1)
-        emiss = emiss.sum(axis=-1)
+        if not height_profile:
+            atten = atten.prod(axis=-1)
+            emiss = emiss.sum(axis=-1)
 
-        if atten.size == 1:
-            atten = atten[0, 0]
         if emission:
             return atten, emiss
         return atten

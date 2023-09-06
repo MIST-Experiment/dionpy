@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 def iri_star(pars):
-    return iricore.IRI(*pars)
+    return iricore.iri(*pars)
 
 
 def echaim_star(pars):

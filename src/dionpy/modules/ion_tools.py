@@ -24,6 +24,8 @@ def srange(
 
 def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
     """
+    Angular (omega) plasma frequency.
+
     :param n_e: Electron density in [m^-3].
     :return: Plasma frequency of cold electrons in Hz.
     """
@@ -35,7 +37,7 @@ def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
             "Number density cannot be < 0. Most probably iricore does not include data for the specified date. Please "
             "update the library by calling iricore.update()."
         )
-    return 1 / (2 * np.pi) * np.sqrt((n_e * e ** 2) / (m_e * epsilon0))
+    return np.sqrt((n_e * e ** 2) / (m_e * epsilon0))   # / (2 * np.pi)
 
 
 def refr_index(n_e: float | np.ndarray, freq: float):

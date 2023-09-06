@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import List, Callable, Sequence
+from typing import List, Callable, Sequence, Literal
 import warnings
 
 import numpy as np
@@ -41,6 +41,7 @@ class IonModel:
                     to IRI-2020.
     :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
+    :param single_layer: If selected - only one layer will be calculated.
     """
 
     def __init__(
@@ -56,10 +57,12 @@ class IonModel:
             fbot: float = 150,
             ftop: float = 500,
             nflayers: int = 100,
-            iriversion: int = 20,
+            iriversion: Literal[16, 20] = 20,
             echaim: bool = False,
             autocalc: bool = True,
+            single_layer: Literal['d', 'f'] = None,
     ):
+        #TODO: remove single layer
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
             raise ValueError("Parameters dt_start and dt_end must be datetime objects.")
         if position[2] != 0:
@@ -109,6 +112,7 @@ class IonModel:
                         iriversion,
                         echaim=echaim,
                         autocalc=autocalc,
+                        single_layer=single_layer,
                         _pbar=False,
                         _pool=pool,
                     )

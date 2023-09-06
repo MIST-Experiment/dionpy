@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from .ion_tools import srange
 
-R_EARTH = 6378100.0
+R_EARTH = 6378100.0    # in [m]
 
 
 class TextColor:
@@ -182,3 +182,7 @@ def get_atten_from_frame(args):
 
 def get_refr_from_frame(args):
     return args[0].refr(*args[1:])
+
+
+def nan2zero(arr):
+    return np.where(np.isnan(arr), 0, arr)

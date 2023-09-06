@@ -44,6 +44,7 @@ class IonFrame:
                         to IRI-2020.
     :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
+    :param single_layer: If selected - only one layer will be calculated.
     :param _pbar: If True - a progress bar will appear.
     """
 
@@ -61,9 +62,11 @@ class IonFrame:
         iriversion: Literal[16, 20] = 20,
         echaim: bool = False,
         autocalc: bool = True,
+        single_layer: Literal['d', 'f'] = None,
         _pbar: bool = False,
         _pool: Union[Pool, None] = None,
     ):
+        #TODO: remove single layer from next version
         if isinstance(dt, datetime):
             self.dt = dt
         else:
@@ -71,12 +74,13 @@ class IonFrame:
         self.position = position
         self.nside = nside
         self.iriversion = iriversion
+        self.single_layer = single_layer
         self.dlayer = DLayer(
             dt, position, dbot, dtop, ndlayers, nside, iriversion, echaim, autocalc, _pbar, _pool,
-        )
+        ) if single_layer != 'f' else None
         self.flayer = FLayer(
             dt, position, fbot, ftop, nflayers, nside, iriversion, echaim, autocalc, _pbar, _pool,
-        )
+        ) if single_layer != 'd' else None
 
     def calc(self, pbar: bool = False):
         """
@@ -84,8 +88,10 @@ class IonFrame:
 
         :param pbar: If True - a progress bar will appear.
         """
-        self.dlayer._calc(pbar)
-        self.flayer._calc(pbar)
+        if self.single_layer != 'f':
+            self.dlayer._calc(pbar)
+        if self.single_layer != 'd':
+            self.flayer._calc(pbar)
 
     @staticmethod
     def _parallel_calc(func, el, az, freq, pbar_desc, **kwargs):
@@ -124,6 +130,8 @@ class IonFrame:
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Refraction angle in [deg] at given sky coordinates, time and frequency of observation.
         """
+        if self.flayer is None:
+            raise ValueError("The F-layer was not calculated in this model.")
         return self._parallel_calc(
             self.flayer.refr, alt, az, freq, _pbar_desc, troposphere=troposphere
         )
@@ -135,8 +143,9 @@ class IonFrame:
         freq: float | np.ndarray,
         _pbar_desc: str | None = None,
         col_freq: str = "default",
-        emission: bool = True,
+        emission: bool = False,
         troposphere: bool = True,
+        height_profile: bool = False,
     ) -> float | np.ndarray:
         """
         :param alt: Elevation of observation(s) in [deg].
@@ -147,10 +156,13 @@ class IonFrame:
                          or float in Hz.
         :param emission: If True - also returns array of emission temperatures.
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
+        :param height_profile: If True - returns height profile of attenuation (+1 dimension).
         :param _pbar_desc: Description of progress bar. If None - the progress bar will not appear.
         :return: Attenuation factor at given sky coordinates, time and frequency of observation. Output is the
                  attenuation factor between 0 (total attenuation) and 1 (no attenuation).
         """
+        if self.dlayer is None:
+            raise ValueError("The D-layer was not calculated in this model.")
         return self._parallel_calc(
             self.dlayer.atten,
             alt,
@@ -160,6 +172,7 @@ class IonFrame:
             col_freq=col_freq,
             emission=emission,
             troposphere=troposphere,
+            height_profile=height_profile,
         )
 
     def radec2altaz(self, ra: float | np.ndarray, dec: float | np.ndarray):
@@ -181,40 +194,6 @@ class IonFrame:
         aa_coord = skycoord.transform_to(altaz_cs)
         return aa_coord.alt.value, aa_coord.az.value
 
-    def stec(self, alt: float, az: float, hbot: float = 90, htop: float = 2000, npoints: int = 500) -> float:
-        """
-        Calculates slant tec in a given direction using the IRI model.
-
-        :param alt: Altitude angle.
-        :param az: Azimuth angle.
-        :param hbot: Bottom height limit for integration.
-        :param htop: Top height limit for integration.
-        :param npoints: Number of points to integrate.
-        :return: Total electron content along the line of sight in TECU (10^16 m-2).
-        """
-        return iri.stec(alt, az, self.dt, self.position, version=self.iriversion)
-
-    def stec_echaim(self, alt: float, az: float, hbot: float = 90, htop: float = 2000, npoints: int = 500) -> float:
-        """
-        Calculates slant tec in a given direction using the E-CHAIM model.
-
-        :param alt: Altitude angle.
-        :param az: Azimuth angle.
-        :param hbot: Bottom height limit for integration.
-        :param htop: Top height limit for integration.
-        :param npoints: Number of points to integrate.
-        :return: Total electron content along the line of sight in TECU (10^16 m-2).
-        """
-        hstep = (htop - hbot) / npoints
-        heights = np.linspace(hbot, htop, npoints)
-        rslant = srange(np.deg2rad(90 - alt), heights * 1e3)
-        ell = Ellipsoid()
-        slat, slon, _ = pm.aer2geodetic(az, alt, rslant, *self.position, ell=ell)
-        if np.any(slat < 55):
-            raise ValueError("Cannot apply the E-CHAIM model to this particular direction.")
-        ne = parallel_echaim_density_path(slat, slon, heights, self.dt)
-        return np.sum(ne) * hstep * 1e3 * 1e-16
-
     def write_self_to_file(self, file: h5py.File):
         h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
         grp = file.create_group(h5dir)
@@ -224,18 +203,18 @@ class IonFrame:
         meta.attrs["nside"] = self.nside
         meta.attrs["iriversion"] = self.iriversion
 
-        meta.attrs["ndlayers"] = self.dlayer.nlayers
-        meta.attrs["dtop"] = self.dlayer.htop
-        meta.attrs["dbot"] = self.dlayer.hbot
-
-        meta.attrs["nflayers"] = self.flayer.nlayers
-        meta.attrs["fbot"] = self.flayer.hbot
-        meta.attrs["ftop"] = self.flayer.htop
-
-        grp.create_dataset("dedens", data=self.dlayer.edens)
-        grp.create_dataset("detemp", data=self.dlayer.etemp)
-        grp.create_dataset("fedens", data=self.flayer.edens)
-        grp.create_dataset("fetemp", data=self.flayer.etemp)
+        if self.dlayer is not None:
+            meta.attrs["ndlayers"] = self.dlayer.nlayers
+            meta.attrs["dtop"] = self.dlayer.htop
+            meta.attrs["dbot"] = self.dlayer.hbot
+            grp.create_dataset("dedens", data=self.dlayer.edens)
+            grp.create_dataset("detemp", data=self.dlayer.etemp)
+        if self.flayer is not None:
+            meta.attrs["nflayers"] = self.flayer.nlayers
+            meta.attrs["fbot"] = self.flayer.hbot
+            meta.attrs["ftop"] = self.flayer.htop
+            grp.create_dataset("fedens", data=self.flayer.edens)
+            grp.create_dataset("fetemp", data=self.flayer.etemp)
 
     def save(self, saveto: str = "./ionframe"):
         """
@@ -256,24 +235,23 @@ class IonFrame:
     @classmethod
     def read_self_from_file(cls, grp: h5py.Group):
         meta = grp.get("meta")
+        meta_attrs = dict(meta.attrs)
+        del meta_attrs['dt']
+
         obj = cls(
             autocalc=False,
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
-            position=meta.attrs["position"],
-            nside=meta.attrs["nside"],
-            dbot=meta.attrs["dbot"],
-            dtop=meta.attrs["dtop"],
-            ndlayers=meta.attrs["ndlayers"],
-            fbot=meta.attrs["fbot"],
-            ftop=meta.attrs["ftop"],
-            nflayers=meta.attrs["nflayers"],
-            iriversion=meta.attrs["iriversion"],
+            **meta_attrs
         )
         obj.dlayer.edens = none_or_array(grp.get("dedens"))
         obj.dlayer.etemp = none_or_array(grp.get("detemp"))
+        if obj.dlayer.edens is None and obj.dlayer.etemp is None:
+            obj.dlayer = None
 
         obj.flayer.edens = none_or_array(grp.get("fedens"))
         obj.flayer.etemp = none_or_array(grp.get("fetemp"))
+        if obj.flayer.edens is None and obj.flayer.etemp is None:
+            obj.flayer = None
         return obj
 
     @classmethod
@@ -631,3 +609,4 @@ class IonFrame:
             cbformat="%.2f",
             **kwargs,
         )
+
