@@ -1,5 +1,6 @@
 import itertools
-from multiprocessing import cpu_count, Pool
+import ctypes
+import multiprocessing as mp
 
 import iricore
 import echaim
@@ -16,8 +17,15 @@ def echaim_star(pars):
     return echaim.density_profile(*pars)
 
 
-# def echaim_star(pars):
-#     return echaim.density_profile(*pars)
+def shared_array(array):
+    """
+    Returns a copy of array in shared memory that may be used in different processes.
+    """
+    sharr_base = mp.Array(ctypes.c_double, int(np.prod(array.shape)))
+    sharr = np.ctypeslib.as_array(sharr_base.get_obj())
+    sharr[:] = array.ravel()[:]
+    sharr = sharr.reshape(array.shape)
+    return sharr
 
 
 def interp_val(data1, data2, dt1, dt2, dt):
@@ -32,67 +40,6 @@ def interp_val(data1, data2, dt1, dt2, dt):
     linmod = interp1d(x, y, axis=0)
     x_in = (dt - dt1).total_seconds()
     return linmod(x_in)
-
-
-def interp_val_star(pars):
-    return interp_val(*pars)
-
-
-def calc_refatt(func, el, az, freq, **kwargs):
-    """
-    Outside class function to make calculation of attenuation and refraction possible in parallel.
-    """
-    return func(el, az, freq, **kwargs)
-
-
-def calc_refatt_star(pars):
-    return calc_refatt(*pars[:-1], **pars[-1])
-
-
-def calc_refatt_par(func, el, az, freqs, pbar_desc, **kwargs):
-    """
-    Implements parallel calculation of refraction/attenuation.
-    """
-    nproc = np.min([cpu_count(), len(freqs)])
-    disable = True if pbar_desc is None else False
-    rep_kwargs = [kwargs for _ in range(len(freqs))]
-    with Pool(processes=nproc) as pool:
-        res = list(
-            tqdm(
-                pool.imap(
-                    calc_refatt_star,
-                    zip(
-                        itertools.repeat(func),
-                        itertools.repeat(el),
-                        itertools.repeat(az),
-                        freqs,
-                        rep_kwargs,
-                    ),
-                ),
-                total=len(freqs),
-                disable=disable,
-                desc=pbar_desc,
-            )
-        )
-    return np.array(res)
-
-
-def echaim_density_path_star(pars):
-    return echaim.density_path(*pars)
-
-
-def parallel_echaim_density_path(slat, slon, heights, dt):
-    nproc = cpu_count()
-    nbatches = nproc
-    blat = np.array_split(slat, nbatches)
-    blon = np.array_split(slon, nbatches)
-    bheights = np.array_split(heights, nbatches)
-    with Pool(processes=nproc) as pool:
-        res = list(pool.imap(
-                echaim_density_path_star,
-                zip(blat, blon, bheights, itertools.repeat(dt))
-        ))
-    return np.hstack(res)
 
 
 def calc_interp_val(el, az, funcs, dts, *args, **kwargs):
@@ -112,11 +59,11 @@ def calc_interp_val_par(el, az, funcs, dts, pbar_desc, *args, **kwargs):
     """
     Implements parallel calculation and interpolation of data at given datetimes.
     """
-    nproc = np.min([cpu_count(), len(funcs)])
+    nproc = np.min([mp.cpu_count(), len(funcs)])
     disable = True if pbar_desc is None else False
     rep_args = [args for _ in range(len(dts))]
     rep_kwargs = [kwargs for _ in range(len(dts))]
-    with Pool(processes=nproc) as pool:
+    with mp.Pool(processes=nproc) as pool:
         res = list(
             tqdm(
                 pool.imap(

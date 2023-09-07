@@ -18,9 +18,9 @@ def _estimate_ahd(htop: float, hint: float = 0, r: float = R_EARTH*1e-3):
     Estimates the angular horizontal distance (ahd) between the top point of an atmospheric
     layer and the Earth's surface.
 
-    :param htop: The height of the top point of the atmospheric layer.
-    :param hint: The height above the Earth's surface.
-    :param r: The radius of the Earth.
+    :param htop: The height of the top point of the atmospheric layer in [km].
+    :param hint: The height above the Earth's surface in [km].
+    :param r: The radius of the Earth in [km].
     """
     return np.rad2deg(np.arccos(r / (r + hint)) + np.arccos(r / (r + htop)))
 
@@ -33,9 +33,9 @@ class IonLayer:
     :param dt: Date/time of the model.
     :param position: Geographical position of an observer. Must be a tuple containing
                      latitude [deg], longitude [deg], and elevation [m].
-    :param hbot: Lower limit in [km] of the D layer of the ionosphere.
-    :param htop: Upper limit in [km] of the D layer of the ionosphere.
-    :param nlayers: Number of sub-layers in the D layer for intermediate calculations.
+    :param hbot: Lower limit in [km] of the layer of the ionosphere.
+    :param htop: Upper limit in [km] of the layer of the ionosphere.
+    :param nlayers: Number of sub-layers in the layer for intermediate calculations.
     :param nside: Resolution of healpix grid.
     :param rdeg_offset: Extend radius of coordinate plane in [deg].
     :param pbar: If True - a progress bar will appear.
@@ -62,9 +62,10 @@ class IonLayer:
             echaim: bool = False,
             _pool: Union[Pool, None] = None,
     ):
-        # TODO: Set offset to 1 for d-layer
         # TODO: Save a value of rdeg
-        self.rdeg = _estimate_ahd(htop, position[-1]) + rdeg_offset
+        # TODO: parallel calculations for atten and refr
+        self.rdeg = _estimate_ahd(htop, position[-1]*1e-3) + rdeg_offset
+        self.rdeg_offset = rdeg_offset
 
         if echaim:
             if position[0] - self.rdeg < 55:
@@ -93,7 +94,26 @@ class IonLayer:
         self.etemp = np.zeros((len(self._obs_pixels), nlayers))
 
         if autocalc:
-            self._calc(pbar=pbar, _pool=_pool)
+            self.calc(pbar=pbar, _pool=_pool)
+
+    def get_init_dict(self):
+        """
+        Returns a dictionary containing the initial parameters for the IonLayer object.
+
+        Note:
+            - The default value for autocalc is False.
+        """
+        return dict(
+            dt=self.dt,
+            position=self.position,
+            hbot=self.hbot,
+            htop=self.htop,
+            nlayers=self.nlayers,
+            nside=self.nside,
+            rdeg_offset=self.rdeg_offset,
+            autocalc=False,
+            echaim=self.echaim,
+        )
 
     def _batch_split(self, batch):
         nbatches = len(self._obs_pixels) // batch + 1
@@ -102,7 +122,7 @@ class IonLayer:
         blon = np.array_split(self._obs_lons, nbatches)
         return nbatches, nproc, blat, blon
 
-    def _calc(self, pbar=True, _pool: Union[Pool, None] = None):
+    def calc(self, pbar=True, _pool: Union[Pool, None] = None):
         """
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.

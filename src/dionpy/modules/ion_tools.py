@@ -12,7 +12,7 @@ def srange(
     :param theta: Zenith angle in [rad].
     :param alt: Altitude in [m].
     :param re: Radius of the Earth in [m].
-    :return: Distance in meters from the telescope to the point (theta, alt)
+    :return: Distance in meters from the telescope to the point (theta, alt) in [m]
     """
     if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
         raise ValueError("Only one input parameter can be a numpy array.")
