@@ -61,7 +61,7 @@ def raytrace(
     fed = np.where(fed < 0, 0, fed)
     # Refraction index of 1st point
     n_next = refr_index(fed, freq)
-    nan_theta_mask += plasfreq(fed) > freq
+    nan_theta_mask += plasfreq(fed, angular=False) > freq
     # The outgoing angle at the 1st interface using Snell's law
     theta_ref = refr_angle(n_cur, n_next, theta_inc)
     inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
@@ -83,7 +83,6 @@ def raytrace(
         # Getting r2 using law of cosines
         r_slant = srange(np.deg2rad(90 - el_cur), d_next - d_cur, re=R_EARTH + d_cur)
         # Get geodetic coordinates of point
-        print(az, el_cur, r_slant, lat_ray, lon_ray, heights[i - 1])
         lat_ray, lon_ray, _ = pm.aer2geodetic(
             az, el_cur, r_slant, lat_ray, lon_ray, heights[i - 1], ell=ell
         )
@@ -95,20 +94,13 @@ def raytrace(
             fed = np.where(fed < 0, 0, fed)
             # Refractive indices
             n_next = refr_index(fed, freq)
-            nan_theta_mask += plasfreq(fed) > freq
+            nan_theta_mask += plasfreq(fed, angular=False) > freq
 
         # The outgoing angle at the 2nd interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
         inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
-        print(i, delta_theta)
-        print("theta_inc", theta_inc)
-        print("n_cur / n_next", n_cur / n_next)
-        print("sin_theta_ref", n_cur / n_next * np.sin(theta_inc))
-        print("theta_ref", theta_ref)
-        print("======================")
         delta_theta += theta_ref - theta_inc
-        if i == 42:
-            break
+
         # Update variables for new interface
         el_cur = np.rad2deg(np.pi / 2 - theta_ref)
         n_cur = n_next
