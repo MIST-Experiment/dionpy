@@ -22,7 +22,7 @@ def srange(
     return r
 
 
-def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
+def plasfreq(n_e: float | np.ndarray, angular=True) -> float | np.ndarray:
     """
     Angular (omega) plasma frequency.
 
@@ -37,7 +37,8 @@ def plasfreq(n_e: float | np.ndarray) -> float | np.ndarray:
             "Number density cannot be < 0. Most probably iricore does not include data for the specified date. Please "
             "update the library by calling iricore.update()."
         )
-    return np.sqrt((n_e * e ** 2) / (m_e * epsilon0))   # / (2 * np.pi)
+    result = np.sqrt((n_e * e ** 2) / (m_e * epsilon0))
+    return result if angular else 0.5 * result / np.pi
 
 
 def refr_index(n_e: float | np.ndarray, freq: float):
@@ -47,8 +48,8 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     :param freq: Observational frequency in [Hz].
     :return: Refractive index of the ionosphere from electron density.
     """
-    nu_p = plasfreq(n_e)
-    return np.sqrt(1 - (nu_p / freq) ** 2)
+    nu_p = plasfreq(n_e, angular=False)
+    return np.sqrt(1 - (0.5 * nu_p / np.pi / freq) ** 2)
 
 
 def refr_angle(

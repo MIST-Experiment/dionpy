@@ -114,7 +114,7 @@ class FLayer(IonLayer):
         fed = np.where(fed < 0, 0, fed)
         # Refraction index of 1st point
         n_next = refr_index(fed, freq)
-        nan_theta_mask += plasfreq(fed) > freq
+        nan_theta_mask += plasfreq(fed, angular=False) > freq
         # The outgoing angle at the 1st interface using Snell's law
         theta_ref = refr_angle(n_cur, n_next, theta_inc)
         inf_theta_mask += np.abs((n_cur / n_next * np.sin(theta_inc))) > 1
@@ -147,7 +147,7 @@ class FLayer(IonLayer):
                 fed = np.where(fed < 0, 0, fed)
                 # Refractive indices
                 n_next = refr_index(fed, freq)
-                nan_theta_mask += plasfreq(fed) > freq
+                nan_theta_mask += plasfreq(fed, angular=False) > freq
 
             # The outgoing angle at the 2nd interface using Snell's law
             theta_ref = refr_angle(n_cur, n_next, theta_inc)
