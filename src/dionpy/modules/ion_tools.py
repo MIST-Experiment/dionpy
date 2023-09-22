@@ -12,7 +12,7 @@ def srange(
     :param theta: Zenith angle in [rad].
     :param alt: Altitude in [m].
     :param re: Radius of the Earth in [m].
-    :return: Distance in meters from the telescope to the point (theta, alt)
+    :return: Distance in [m] from the telescope to the point (theta, alt)
     """
     if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
         raise ValueError("Only one input parameter can be a numpy array.")
@@ -24,7 +24,7 @@ def srange(
 
 def plasfreq(n_e: float | np.ndarray, angular=True) -> float | np.ndarray:
     """
-    Angular (omega) plasma frequency.
+    Angular (omega) plasma frequency in [Hz].
 
     :param n_e: Electron density in [m^-3].
     :return: Plasma frequency of cold electrons in Hz.
