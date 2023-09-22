@@ -17,6 +17,8 @@ from .modules.plotting import polar_plot
 from .raytracing import raytrace
 
 # TODO: add height constraints in plotting
+# TODO: rewrite saving
+
 
 class IonFrame:
     """
@@ -97,7 +99,6 @@ class IonFrame:
                  freq: float | np.ndarray,
                  _pbar_desc: str | None = None,
                  col_freq: str = "default",
-                 emission: bool = False,
                  troposphere: bool = True,
                  height_profile: bool = False) -> float | np.ndarray:
 

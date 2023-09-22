@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pymap3d as pm
 
@@ -5,6 +7,7 @@ from .IonLayer import IonLayer
 from .modules.helpers import Ellipsoid, check_elaz_shape, R_EARTH
 from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr, plasfreq
 
+# TODO: create a separate sublayer refraction calculation function for F-layer
 
 def raytrace(
         layer_init_dict: dict,
@@ -13,8 +16,10 @@ def raytrace(
         alt: float | np.ndarray,
         az: float | np.ndarray,
         freq: float | np.ndarray,
+        col_freq: str = "default",
         troposphere: bool = True,
-):
+        height_profile: bool = False
+) -> List[float | np.ndarray]:
     # TODO: fix nans and infs
     # IonLayer initialization with edens and etemp arrays from shared memory
     assert layer_init_dict['autocalc'] is False, "autocalc param should be False, check IonFrame."
@@ -29,6 +34,7 @@ def raytrace(
     az = np.array(az)
     ell = Ellipsoid(R_EARTH, R_EARTH)
     heights = layer.get_heights() * 1e3  # in [m]
+
     delta_theta = 0 * alt
     inf_theta_mask = 0 * alt
     nan_theta_mask = 0 * alt
