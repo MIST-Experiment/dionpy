@@ -93,16 +93,9 @@ class DLayer(IonLayer):
         alt, az = alt.copy(), az.copy()
         atten = np.empty((*alt.shape, self.nlayers))
         emiss = np.empty((*alt.shape, self.nlayers))
-        dh = (self.htop - self.hbot) / self.nlayers * 1e3
+        dh = (self.htop - self.hbot) / self.nlayers * 1e3   # in [m]
 
-        if col_freq == "default" or "aggrawal":
-            col_model = col_aggarwal
-        elif col_freq == "nicolet":
-            col_model = col_nicolet
-        elif col_freq == "setty":
-            col_model = col_setty
-        else:
-            col_model = lambda h: np.float64(col_freq)
+        col_model = col_aggarwal
 
         heights_km = np.linspace(self.hbot, self.htop, self.nlayers)
 
@@ -112,7 +105,7 @@ class DLayer(IonLayer):
             theta += np.deg2rad(dtheta)
             alt -= dtheta
 
-        c = 2.99792458e8
+        c = 2.99792458e8    # [m/s]
 
         for i in range(self.nlayers):
             freq_c = col_model(heights_km[i])
@@ -127,6 +120,4 @@ class DLayer(IonLayer):
             atten = atten.prod(axis=-1)
             emiss = emiss.sum(axis=-1)
 
-        if emission:
-            return atten, emiss
-        return atten
+        return atten, emiss
