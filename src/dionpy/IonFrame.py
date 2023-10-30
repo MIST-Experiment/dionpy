@@ -9,14 +9,13 @@ import h5py
 import numpy as np
 
 from .IonLayer import IonLayer
-from .modules.helpers import none_or_array, elaz_mesh
+from .modules.helpers import none_or_array, elaz_mesh, open_save_file
 from .modules.ion_tools import trop_refr
 from .modules.parallel import shared_array
 from .modules.plotting import polar_plot
 
 from .raytracing import raytrace
 
-# TODO: rewrite saving
 # TODO: add height constraints in plotting
 # TODO: make raytracing parallel
 # TODO: choose better colormaps
@@ -71,6 +70,7 @@ class IonFrame:
         self.position = position
         self.nside = nside
         self.iriversion = iriversion
+        self.echaim = echaim
         self.layer = IonLayer(
             dt=dt,
             position=position,
@@ -87,14 +87,6 @@ class IonFrame:
             **kwargs,
         )
 
-    def calc_layer(self, pbar: bool = False):
-        """
-        Calculates the layer's edens and etemp (use it if you set autocalc=False during the initialization).
-
-        :param pbar: If True - a progress bar will appear.
-        """
-        self.layer.calc(pbar)
-
     def __call__(self,
                  alt: float | np.ndarray,
                  az: float | np.ndarray,
@@ -108,6 +100,31 @@ class IonFrame:
         sh_etemp = shared_array(self.layer.etemp)
         init_dict = self.layer.get_init_dict()
         return raytrace(init_dict, sh_edens, sh_etemp, alt, az, freq)
+
+    def __str__(self):
+        return (
+            f"IonFrame instance\n"
+            f"Date:\t{self.dt.strftime('%d %b %Y %H:%M:%S')} UTC\n"
+            f"Position:\n"
+            f"\tlat = {self.position[0]:.2f} [deg]\n"
+            f"\tlon = {self.position[1]:.2f} [deg]\n"
+            f"\talt = {self.position[0]:.2f} [m]\n"
+            f"NSIDE:\t{self.nside}\n"
+            f"IRI version:\t20{self.iriversion}\n"
+            f"Use E-CHAIM:\t{self.echaim}\n"
+            f"Layer properties:\n"
+            f"\tBottom height:\t{self.layer.hbot} [km]\n"
+            f"\tTop height:\t{self.layer.htop} [km]\n"
+            f"\tN sublayers:\t{self.layer.nlayers}\n"
+        )
+
+    def calc_layer(self, pbar: bool = False):
+        """
+        Calculates the layer's edens and etemp (use it if you set autocalc=False during the initialization).
+
+        :param pbar: If True - a progress bar will appear.
+        """
+        self.layer.calc(pbar)
 
     def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
         """
@@ -142,23 +159,19 @@ class IonFrame:
         h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
         grp = file.create_group(h5dir)
         meta = grp.create_dataset("meta", shape=(0,))
-        meta.attrs["position"] = self.position
         meta.attrs["dt"] = self.dt.strftime("%Y-%m-%d %H:%M")
+        meta.attrs["position"] = self.position
         meta.attrs["nside"] = self.nside
         meta.attrs["iriversion"] = self.iriversion
+        meta.attrs["echaim"] = self.echaim
 
-        if self.dlayer is not None:
-            meta.attrs["ndlayers"] = self.dlayer.nlayers
-            meta.attrs["dtop"] = self.dlayer.htop
-            meta.attrs["dbot"] = self.dlayer.hbot
-            grp.create_dataset("dedens", data=self.dlayer.edens)
-            grp.create_dataset("detemp", data=self.dlayer.etemp)
-        if self.flayer is not None:
-            meta.attrs["nflayers"] = self.flayer.nlayers
-            meta.attrs["fbot"] = self.flayer.hbot
-            meta.attrs["ftop"] = self.flayer.htop
-            grp.create_dataset("fedens", data=self.flayer.edens)
-            grp.create_dataset("fetemp", data=self.flayer.etemp)
+        if self.layer is not None:
+            meta.attrs["rdeg_offset"] = self.layer.rdeg_offset
+            meta.attrs["nlayers"] = self.layer.nlayers
+            meta.attrs["htop"] = self.layer.htop
+            meta.attrs["hbot"] = self.layer.hbot
+            grp.create_dataset("edens", data=self.layer.edens)
+            grp.create_dataset("etemp", data=self.layer.etemp)
 
     def save(self, saveto: str = "./ionframe"):
         """
@@ -166,15 +179,8 @@ class IonFrame:
 
         :param saveto: Path and name of the file.
         """
-        head, tail = os.path.split(saveto)
-        if not os.path.exists(head) and len(head) > 0:
-            os.makedirs(head)
-        if not saveto.endswith(".h5"):
-            saveto += ".h5"
-
-        file = h5py.File(saveto, mode="w")
-        self.write_self_to_file(file)
-        file.close()
+        with open_save_file(saveto) as file:
+            self.write_self_to_file(file)
 
     @classmethod
     def read_self_from_file(cls, grp: h5py.Group):
@@ -187,15 +193,10 @@ class IonFrame:
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
             **meta_attrs
         )
-        obj.dlayer.edens = none_or_array(grp.get("dedens"))
-        obj.dlayer.etemp = none_or_array(grp.get("detemp"))
-        if obj.dlayer.edens is None and obj.dlayer.etemp is None:
-            obj.dlayer = None
-
-        obj.flayer.edens = none_or_array(grp.get("fedens"))
-        obj.flayer.etemp = none_or_array(grp.get("fetemp"))
-        if obj.flayer.edens is None and obj.flayer.etemp is None:
-            obj.flayer = None
+        obj.layer.edens = none_or_array(grp.get("edens"))
+        obj.layer.etemp = none_or_array(grp.get("etemp"))
+        if obj.layer.edens is None and obj.layer.etemp is None:
+            obj.layer = None
         return obj
 
     @classmethod

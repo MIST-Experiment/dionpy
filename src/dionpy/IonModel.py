@@ -14,10 +14,11 @@ from numpy import ndarray
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
-from .modules.helpers import elaz_mesh, TextColor, pic2vid, get_atten_from_frame, get_refr_from_frame
+from .modules.helpers import elaz_mesh, TextColor, pic2vid, get_atten_from_frame, get_refr_from_frame, open_save_file
 from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
 from .modules.plotting import polar_plot_star
 
+# TODO: Fix raytracing errors in IonModel
 
 class IonModel:
     """
@@ -60,7 +61,6 @@ class IonModel:
             iriversion: Literal[16, 20] = 20,
             echaim: bool = False,
             autocalc: bool = True,
-            single_layer: Literal['d', 'f'] = None,
     ):
         #TODO: remove single layer
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
@@ -119,40 +119,41 @@ class IonModel:
                 )
             pool.close()
 
+    def __str__(self):
+        frame_str = str(self.models[0])
+        frame_str = "\n".join(frame_str.split("\n")[2:])
+
+        return (
+            f"IonModel instance"
+            f"Start date:\t{self.dt_start.strftime('%d %b %Y %H:%M:%S')} UTC\n"
+            f"End date:\t{self.dt_end.strftime('%d %b %Y %H:%M:%S')} UTC\n"
+            f"Mins per frame:\t{self.mpf}\n"
+            ""+frame_str
+        )
+
     def save(self, saveto: str = "./ionmodel"):
         """
         Save the model to a file.
 
         :param saveto: Path to directory with name to save the model.
         """
-        import h5py
+        with open_save_file(saveto) as file:
+            meta = file.create_dataset("meta", shape=(0,))
+            meta.attrs["position"] = self.position
+            meta.attrs["dt_start"] = self.dt_start.strftime("%Y-%m-%d %H:%M")
+            meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
+            meta.attrs["nside"] = self.nside
+            meta.attrs["mpf"] = self.mpf
+            meta.attrs["dbot"] = self.dbot
+            meta.attrs["dtop"] = self.dtop
+            meta.attrs["nlayers"] = self.ndlayers
+            meta.attrs["hbot"] = self.fbot
+            meta.attrs["htop"] = self.ftop
+            meta.attrs["nlayers"] = self.nflayers
+            meta.attrs["iriversion"] = self.iriversion
 
-        head, tail = os.path.split(saveto)
-        if not os.path.exists(head) and len(head) > 0:
-            os.makedirs(head)
-
-        if not saveto.endswith(".h5"):
-            saveto += ".h5"
-
-        file = h5py.File(saveto, mode="w")
-
-        meta = file.create_dataset("meta", shape=(0,))
-        meta.attrs["position"] = self.position
-        meta.attrs["dt_start"] = self.dt_start.strftime("%Y-%m-%d %H:%M")
-        meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
-        meta.attrs["nside"] = self.nside
-        meta.attrs["mpf"] = self.mpf
-        meta.attrs["dbot"] = self.dbot
-        meta.attrs["dtop"] = self.dtop
-        meta.attrs["nlayers"] = self.ndlayers
-        meta.attrs["hbot"] = self.fbot
-        meta.attrs["htop"] = self.ftop
-        meta.attrs["nlayers"] = self.nflayers
-        meta.attrs["iriversion"] = self.iriversion
-
-        for model in self.models:
-            model.write_self_to_file(file)
-        file.close()
+            for model in self.models:
+                model.write_self_to_file(file)
 
     @classmethod
     def load(cls, path: str) -> "IonModel":

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Iterable, Sequence
 
+import h5py
 import healpy as hp
 import numpy as np
 from ffmpeg_progress_yield import FfmpegProgress
@@ -186,3 +187,14 @@ def get_refr_from_frame(args):
 
 def nan2zero(arr):
     return np.where(np.isnan(arr), 0, arr)
+
+
+def open_save_file(saveto):
+    head, tail = os.path.split(saveto)
+    if not os.path.exists(head) and len(head) > 0:
+        os.makedirs(head)
+    if not saveto.endswith(".h5"):
+        saveto += ".h5"
+
+    file = h5py.File(saveto, mode="w")
+    return file

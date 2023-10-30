@@ -63,8 +63,7 @@ class IonLayer:
             _pool: Union[Pool, None] = None,
     ):
         # TODO: Save a value of rdeg
-        # TODO: parallel calculations for atten and refr
-        self.rdeg = _estimate_ahd(htop, position[-1]*1e-3) + rdeg_offset
+        self.rdeg = _estimate_ahd(htop, position[-1] * 1e-3) + rdeg_offset
         self.rdeg_offset = rdeg_offset
 
         if echaim:
