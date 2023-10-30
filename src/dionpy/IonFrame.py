@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from multiprocessing import Pool
-from typing import Union, Sequence, Literal
+from typing import Union, Sequence, Literal, Tuple
 
 import h5py
 import numpy as np
@@ -16,8 +16,9 @@ from .modules.plotting import polar_plot
 
 from .raytracing import raytrace
 
-# TODO: add height constraints in plotting
 # TODO: rewrite saving
+# TODO: add height constraints in plotting
+# TODO: make raytracing parallel
 
 
 class IonFrame:
@@ -100,14 +101,12 @@ class IonFrame:
                  _pbar_desc: str | None = None,
                  col_freq: str = "default",
                  troposphere: bool = True,
-                 height_profile: bool = False) -> float | np.ndarray:
+                 height_profile: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
         sh_edens = shared_array(self.layer.edens)
         sh_etemp = shared_array(self.layer.etemp)
         init_dict = self.layer.get_init_dict()
-        dtheta = raytrace(init_dict, sh_edens, sh_etemp, alt, az, freq)
-        print(dtheta)
-        return dtheta
+        return raytrace(init_dict, sh_edens, sh_etemp, alt, az, freq)
 
     def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
         """
@@ -279,7 +278,7 @@ class IonFrame:
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
-        atten = self.dlayer.atten(el, az, freq, troposphere=troposphere)
+        _, atten, _ = self(el, az, freq, troposphere=troposphere)
         cblim = cblim or [None, 1]
         # atten_db = 20 * np.log10(atten)
         # barlabel = r"dB"
@@ -308,7 +307,7 @@ class IonFrame:
         :return: A matplotlib figure.
         """
         el, az = elaz_mesh(gridsize)
-        _, emiss = self.dlayer.atten(el, az, freq, troposphere=troposphere, emission=True)
+        _, _, emiss = self(el, az, freq, troposphere=troposphere, emission=True)
         cblim = cblim or [0, None]
         barlabel = r"$K$"
         return polar_plot(
@@ -342,9 +341,10 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
+        # TODO: Fix plotting to use __call__
         cblim = cblim or [0, None]
         el, az = elaz_mesh(gridsize)
-        refr = self.flayer.refr(el, az, freq, troposphere=troposphere)
+        refr, _, _ = self(el, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
         return polar_plot(
             (np.deg2rad(az), 90 - el, refr),
