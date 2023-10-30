@@ -145,4 +145,11 @@ def raytrace(
         return np.rad2deg(delta_theta_hist), atten, emiss
 
 
+def raytrace_star(args):
+    """
+    For parallel calculations
+    """
+    return raytrace(*args)
+
+
 

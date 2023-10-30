@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
+import itertools
 from datetime import datetime
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from typing import Union, Sequence, Literal, Tuple
 
 import h5py
@@ -14,10 +14,8 @@ from .modules.ion_tools import trop_refr
 from .modules.parallel import shared_array
 from .modules.plotting import polar_plot
 
-from .raytracing import raytrace
+from .raytracing import raytrace_star
 
-# TODO: add height constraints in plotting
-# TODO: make raytracing parallel
 # TODO: choose better colormaps
 
 
@@ -90,16 +88,49 @@ class IonFrame:
     def __call__(self,
                  alt: float | np.ndarray,
                  az: float | np.ndarray,
-                 freq: float | np.ndarray,
+                 freq: float,
                  _pbar_desc: str | None = None,
                  col_freq: str = "default",
                  troposphere: bool = True,
-                 height_profile: bool = False) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+                 height_profile: bool = False,
+                 pbar=False,
+                 _pool: Union[Pool, None] = None,
+                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+        if isinstance(alt, float):
+            nproc = 1
+            b_alt = [alt]
+            b_az = [az]
+        else:
+            nproc = np.min([len(alt), cpu_count()])
+            b_alt = np.array_split(alt, nproc)
+            b_az = np.array_split(az, nproc)
+        pool = Pool(processes=nproc) if _pool is None else _pool
 
         sh_edens = shared_array(self.layer.edens)
         sh_etemp = shared_array(self.layer.etemp)
         init_dict = self.layer.get_init_dict()
-        return raytrace(init_dict, sh_edens, sh_etemp, alt, az, freq)
+
+        res = list(
+            pool.imap(
+                raytrace_star,
+                zip(
+                    itertools.repeat(init_dict),
+                    itertools.repeat(sh_edens),
+                    itertools.repeat(sh_etemp),
+                    b_alt,
+                    b_az,
+                    itertools.repeat(freq),
+                    itertools.repeat(col_freq),
+                    itertools.repeat(troposphere),
+                    itertools.repeat(height_profile),
+                ),
+            )
+        )
+        dtheta = np.squeeze(np.vstack([x[0] for x in res]))
+        atten = np.squeeze(np.vstack([x[1] for x in res]))
+        emiss = np.squeeze(np.vstack([x[2] for x in res]))
+        return dtheta, atten, emiss
 
     def __str__(self):
         return (
