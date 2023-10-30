@@ -19,6 +19,7 @@ from .raytracing import raytrace
 # TODO: rewrite saving
 # TODO: add height constraints in plotting
 # TODO: make raytracing parallel
+# TODO: choose better colormaps
 
 
 class IonFrame:
@@ -230,10 +231,10 @@ class IonFrame:
         :return: A matplotlib figure.
         """
         barlabel = r"$m^{-3}$"
-        el, az = elaz_mesh(gridsize)
-        fed = self.layer.ed(el, az, layer)
+        alt, az = elaz_mesh(gridsize)
+        fed = self.layer.ed(alt, az, layer)
         return polar_plot(
-            (np.deg2rad(az), 90 - el, fed),
+            (np.deg2rad(az), 90 - alt, fed),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
@@ -252,10 +253,10 @@ class IonFrame:
         :return: A matplotlib figure.
         """
         barlabel = r"K"
-        el, az = elaz_mesh(gridsize)
-        fet = self.layer.et(el, az, layer)
+        alt, az = elaz_mesh(gridsize)
+        fet = self.layer.et(alt, az, layer)
         return polar_plot(
-            (np.deg2rad(az), 90 - el, fet),
+            (np.deg2rad(az), 90 - alt, fet),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
@@ -277,13 +278,13 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        el, az = elaz_mesh(gridsize)
-        _, atten, _ = self(el, az, freq, troposphere=troposphere)
+        alt, az = elaz_mesh(gridsize)
+        _, atten, _ = self(alt, az, freq, troposphere=troposphere)
         cblim = cblim or [None, 1]
         # atten_db = 20 * np.log10(atten)
         # barlabel = r"dB"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, atten),
+            (np.deg2rad(az), 90 - alt, atten),
             dt=self.dt,
             pos=self.position,
             freq=freq,
@@ -306,12 +307,12 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        el, az = elaz_mesh(gridsize)
-        _, _, emiss = self(el, az, freq, troposphere=troposphere, emission=True)
+        alt, az = elaz_mesh(gridsize)
+        _, _, emiss = self(alt, az, freq, troposphere=troposphere)
         cblim = cblim or [0, None]
         barlabel = r"$K$"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, emiss),
+            (np.deg2rad(az), 90 - alt, emiss),
             dt=self.dt,
             pos=self.position,
             freq=freq,
@@ -341,13 +342,12 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        # TODO: Fix plotting to use __call__
         cblim = cblim or [0, None]
-        el, az = elaz_mesh(gridsize)
-        refr, _, _ = self(el, az, freq, troposphere=troposphere)
+        alt, az = elaz_mesh(gridsize)
+        refr, _, _ = self(alt, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, refr),
+            (np.deg2rad(az), 90 - alt, refr),
             dt=self.dt,
             pos=self.position,
             freq=freq,
@@ -367,12 +367,12 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        el, az = elaz_mesh(gridsize)
-        troprefr = self.troprefr(el)
+        alt, az = elaz_mesh(gridsize)
+        troprefr = self.troprefr(alt)
         cblim = cblim or [0, None]
         barlabel = r"$deg$"
         return polar_plot(
-            (np.deg2rad(az), 90 - el, troprefr),
+            (np.deg2rad(az), 90 - alt, troprefr),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
