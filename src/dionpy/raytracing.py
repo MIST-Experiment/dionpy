@@ -1,18 +1,19 @@
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 import pymap3d as pm
 
 from .IonLayer import IonLayer
+from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 from .modules.helpers import Ellipsoid, check_elaz_shape, R_EARTH
 from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr, plasfreq
-from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 
 _ROUND_ELL = Ellipsoid(R_EARTH, R_EARTH)
 _LIGHT_SPEED = 2.99792458e8  # in [m/s]
 
 
-def _raytrace_sublayer(lat_ray, lon_ray, h_ray, h_next, alt_cur, az, freq, d_theta, ref_ind, n_sublayer, layer, theta_ref=None):
+def _raytrace_sublayer(lat_ray, lon_ray, h_ray, h_next, alt_cur, az, freq, d_theta, ref_ind, n_sublayer, layer,
+                       theta_ref=None):
     # Distance from current position to next layer
     r_slant = srange(np.deg2rad(90 - alt_cur), h_next - h_ray, re=R_EARTH + h_ray)
     lat_next, lon_next, _ = pm.aer2geodetic(az, alt_cur, r_slant, lat_ray, lon_ray, h_ray, ell=_ROUND_ELL)
@@ -86,7 +87,7 @@ def raytrace(
     nan_theta_mask = 0 * alt_cur
 
     # - For absorption and emission
-    dh = (layer.htop - layer.hbot) / layer.nlayers * 1e3    # in [m]
+    dh = (layer.htop - layer.hbot) / layer.nlayers * 1e3  # in [m]
     atten = np.empty((*alt_cur.shape, layer.nlayers))
     emiss = np.empty((*alt_cur.shape, layer.nlayers))
 
@@ -121,7 +122,6 @@ def raytrace(
         ds = (srange(np.deg2rad(90 - alt_cur), heights[i] + 0.5 * dh) -
               srange(np.deg2rad(90 - alt_cur), heights[i] - 0.5 * dh))
 
-
         # Tracing change in position due to refraction
         lat_ray, lon_ray, h_ray, delta_theta, alt_cur, ref_ind_cur, theta_ref, ed, nt_mask, it_mask = _raytrace_sublayer(
             lat_ray, lon_ray, h_ray, heights[i], alt_cur, az, freq, delta_theta, ref_ind_cur, i, layer, theta_ref)
@@ -150,6 +150,3 @@ def raytrace_star(args):
     For parallel calculations
     """
     return raytrace(*args)
-
-
-

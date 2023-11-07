@@ -62,7 +62,6 @@ class IonLayer:
             echaim: bool = False,
             _pool: Union[Pool, None] = None,
     ):
-        # TODO: Save a value of rdeg
         self.rdeg = _estimate_ahd(htop, position[-1] * 1e-3) + rdeg_offset
         self.rdeg_offset = rdeg_offset
 
@@ -146,9 +145,6 @@ class IonLayer:
                         blat,
                         blon,
                         itertools.repeat(self.iriversion),
-                        # itertools.repeat(aap),
-                        # itertools.repeat(af107),
-                        # itertools.repeat(nlines),
                     ),
                 ),
                 total=nbatches,
@@ -203,19 +199,19 @@ class IonLayer:
 
     def ed(
             self,
-            el: float | np.ndarray,
+            alt: float | np.ndarray,
             az: float | np.ndarray,
             layer: int | None = None,
     ) -> float | np.ndarray:
         """
-        :param el: Elevation of an observation.
+        :param alt: Elevation of an observation.
         :param az: Azimuth of an observation.
         :param layer: Number of sublayer from the precalculated sublayers.
                       If None - an average over all layers is returned.
         :return: Electron density in the layer.
         """
         return eval_layer(
-            el,
+            alt,
             az,
             self.nside,
             self.position,
@@ -246,19 +242,19 @@ class IonLayer:
 
     def et(
             self,
-            el: float | np.ndarray,
+            alt: float | np.ndarray,
             az: float | np.ndarray,
             layer: int | None = None,
     ) -> float | np.ndarray:
         """
-        :param el: Elevation of an observation.
+        :param alt: Elevation of an observation.
         :param az: Azimuth of an observation.
         :param layer: Number of sublayer from the precalculated sublayers.
                       If None - an average over all layers is returned.
         :return: Electron temperature in the layer.
         """
         return eval_layer(
-            el,
+            alt,
             az,
             self.nside,
             self.position,

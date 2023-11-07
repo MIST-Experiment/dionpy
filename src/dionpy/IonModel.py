@@ -1,24 +1,21 @@
 from __future__ import annotations
 
-import itertools
 import os
 import shutil
 import tempfile
 from datetime import datetime, timedelta
 from multiprocessing import Pool, cpu_count
-from typing import List, Callable, Sequence, Literal
-import warnings
+from typing import List, Sequence, Literal
 
 import numpy as np
 from numpy import ndarray
 from tqdm import tqdm
 
 from .IonFrame import IonFrame
-from .modules.helpers import elaz_mesh, TextColor, pic2vid, get_atten_from_frame, get_refr_from_frame, open_save_file
-from .modules.parallel import calc_interp_val_par, calc_interp_val, interp_val
-from .modules.plotting import polar_plot_star
+from .modules.helpers import altaz_mesh, pic2vid, open_save_file
+from .modules.parallel import interp_val
+from .modules.plotting import polar_plot
 
-# TODO: Fix raytracing errors in IonModel
 
 class IonModel:
     """
@@ -31,18 +28,15 @@ class IonModel:
                      latitude [deg], longitude [deg], and elevation [m].
     :param mpf: Number of minutes per frame.
     :param nside: Resolution of healpix grid.
-    :param dbot: Lower limit in [km] of the D layer of the ionosphere.
-    :param dtop: Upper limit in [km] of the D layer of the ionosphere.
-    :param ndlayers: Number of sub-layers in the D layer for intermediate calculations.
-    :param fbot: Lower limit in [km] of the F layer of the ionosphere.
-    :param ftop: Upper limit in [km] of the F layer of the ionosphere.
-    :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param hbot: Lower limit in [km] of the layer of the ionosphere.
+    :param htop: Upper limit in [km] of the layer of the ionosphere.
+    :param nlayers: Number of sub-layers in the ionospheric layer for intermediate calculations.
+    :param rdeg_offset: Extends the angular horizon distance of calculated ionosphere in [degrees].
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                     the last two digits of the IRI version number. For example, version 20 refers
                     to IRI-2020.
     :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
-    :param single_layer: If selected - only one layer will be calculated.
     """
 
     def __init__(
@@ -52,23 +46,16 @@ class IonModel:
             position: Sequence[float, float, float],
             mpf: int = 15,
             nside: int = 64,
-            dbot: float = 60,
-            dtop: float = 90,
-            ndlayers: int = 100,
-            fbot: float = 150,
-            ftop: float = 500,
-            nflayers: int = 100,
+            hbot: float = 60,
+            htop: float = 500,
+            nlayers: int = 500,
+            rdeg_offset: float = 5,
             iriversion: Literal[16, 20] = 20,
             echaim: bool = False,
             autocalc: bool = True,
     ):
-        #TODO: remove single layer
         if not isinstance(dt_start, datetime) or not isinstance(dt_end, datetime):
             raise ValueError("Parameters dt_start and dt_end must be datetime objects.")
-        if position[2] != 0:
-            position[2] = 0
-            warnings.warn("The current model does not support non zero altitude in instrument position. Setting "
-                          "instrument altitude to zero.", RuntimeWarning, stacklevel=2)
 
         self.dt_start = dt_start
         self.dt_end = dt_end
@@ -79,40 +66,35 @@ class IonModel:
             [dt_start + tdelta * i for i in range(nmodels + 1)]
         ).astype(datetime)
 
-        self.dbot = dbot
-        self.dtop = dtop
-        self.ndlayers = ndlayers
-        self.fbot = fbot
-        self.ftop = ftop
-        self.nflayers = nflayers
+        self.hbot = hbot
+        self.htop = htop
+        self.nlayers = nlayers
+        self.rdeg_offset = rdeg_offset
+        self.echaim = echaim
 
         self.position = position
         self.mpf = mpf
         self.nside = nside
         self.iriversion = iriversion
-        self.models = []
+        self.frames = []
 
         if autocalc:
             nproc = np.min([cpu_count(), nmodels])
-            # nproc = 1
             pool = Pool(processes=nproc)
 
             for dt in tqdm(self._dts, desc="Calculating time frames"):
-                self.models.append(
+                self.frames.append(
                     IonFrame(
-                        dt,
-                        position,
-                        nside,
-                        dbot,
-                        dtop,
-                        ndlayers,
-                        fbot,
-                        ftop,
-                        nflayers,
-                        iriversion,
+                        dt=dt,
+                        position=position,
+                        nside=nside,
+                        hbot=hbot,
+                        htop=htop,
+                        nlayers=nlayers,
+                        rdeg_offset=rdeg_offset,
+                        iriversion=iriversion,
                         echaim=echaim,
                         autocalc=autocalc,
-                        single_layer=single_layer,
                         _pbar=False,
                         _pool=pool,
                     )
@@ -120,15 +102,15 @@ class IonModel:
             pool.close()
 
     def __str__(self):
-        frame_str = str(self.models[0])
+        frame_str = str(self.frames[0])
         frame_str = "\n".join(frame_str.split("\n")[2:])
 
         return (
-            f"IonModel instance"
-            f"Start date:\t{self.dt_start.strftime('%d %b %Y %H:%M:%S')} UTC\n"
-            f"End date:\t{self.dt_end.strftime('%d %b %Y %H:%M:%S')} UTC\n"
-            f"Mins per frame:\t{self.mpf}\n"
-            ""+frame_str
+                f"IonModel instance\n"
+                f"Start date:\t{self.dt_start.strftime('%d %b %Y %H:%M:%S')} UTC\n"
+                f"End date:\t{self.dt_end.strftime('%d %b %Y %H:%M:%S')} UTC\n"
+                f"Minutes per frame:\t{self.mpf}\n"
+                "" + frame_str
         )
 
     def save(self, saveto: str = "./ionmodel"):
@@ -144,15 +126,14 @@ class IonModel:
             meta.attrs["dt_end"] = self.dt_end.strftime("%Y-%m-%d %H:%M")
             meta.attrs["nside"] = self.nside
             meta.attrs["mpf"] = self.mpf
-            meta.attrs["dbot"] = self.dbot
-            meta.attrs["dtop"] = self.dtop
-            meta.attrs["nlayers"] = self.ndlayers
-            meta.attrs["hbot"] = self.fbot
-            meta.attrs["htop"] = self.ftop
-            meta.attrs["nlayers"] = self.nflayers
+            meta.attrs["hbot"] = self.hbot
+            meta.attrs["htop"] = self.htop
+            meta.attrs["nlayers"] = self.nlayers
+            meta.attrs["rdeg_offset"] = self.rdeg_offset
             meta.attrs["iriversion"] = self.iriversion
+            meta.attrs["echaim"] = self.echaim
 
-            for model in self.models:
+            for model in self.frames:
                 model.write_self_to_file(file)
 
     @classmethod
@@ -176,28 +157,22 @@ class IonModel:
 
             if len(groups) <= 1:
                 raise RuntimeError(
-                    "File contains more less than two models. "
+                    "File contains more less than two frames. "
                     + "Consider reading it with IonFrame class."
                 )
             meta = file.get("meta")
+            meta_attrs = dict(meta.attrs)
+            del meta_attrs['dt_start']
+            del meta_attrs['dt_end']
             obj = cls(
                 autocalc=False,
                 dt_start=datetime.strptime(meta.attrs["dt_start"], "%Y-%m-%d %H:%M"),
                 dt_end=datetime.strptime(meta.attrs["dt_end"], "%Y-%m-%d %H:%M"),
-                position=meta.attrs["position"],
-                nside=meta.attrs["nside"],
-                mpf=meta.attrs["mpf"],
-                dbot=meta.attrs["dbot"],
-                dtop=meta.attrs["dtop"],
-                ndlayers=meta.attrs["nlayers"],
-                fbot=meta.attrs["hbot"],
-                ftop=meta.attrs["htop"],
-                nflayers=meta.attrs["nlayers"],
-                iriversion=meta.attrs["iriversion"],
+                **meta_attrs
             )
             for group in groups:
                 grp = file[group]
-                obj.models.append(IonFrame.read_self_from_file(grp))
+                obj.frames.append(IonFrame.read_self_from_file(grp))
             return obj
 
     def _lr_ind(self, dt: datetime) -> [int, int]:
@@ -211,35 +186,11 @@ class IonModel:
                 f"Datetime must be within precalculated range "
                 + "{str(self.dt_start)} - {str(self.dt_end)}."
             )
+        # noinspection PyTypeChecker
         idx = np.searchsorted(self._dts, dt)
         if idx == 0:
             return [idx, idx]
         return [idx - 1, idx]
-
-    def _parallel_calc(
-            self,
-            el: float | np.ndarray,
-            az: float | np.ndarray,
-            dt: datetime | List[datetime] | np.ndarray,
-            funcs: List[Callable],
-            pbar_desc: str,
-            *args,
-            **kwargs,
-    ) -> float | np.ndarray:
-        """
-        Sends methods either to serial or parallel calculation routines based on type of dt.
-        """
-        if (isinstance(dt, list) or isinstance(dt, np.ndarray)) and len(dt) > 1:
-            idx = [self._lr_ind(i) for i in dt]
-            dts = [self._dts[i] for i in idx]
-            dts = [np.append(dts[i], dt[i]) for i in range(len(dts))]
-            funcs = [[funcs[i[0]], funcs[i[1]]] for i in idx]
-            return calc_interp_val_par(el, az, funcs, dts, pbar_desc, *args, **kwargs)
-        else:
-            idx = self._lr_ind(dt)
-            dt1, dt2 = self._dts[idx]
-            funcs = [funcs[idx[0]], funcs[idx[1]]]
-            return calc_interp_val(el, az, funcs, [dt1, dt2, dt], *args, **kwargs)
 
     def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
         """
@@ -250,17 +201,12 @@ class IonModel:
         """
         if dt in self._dts:
             idx = np.argwhere(self._dts == dt)
-            return self.models[idx[0][0]]
+            return self.frames[idx[0][0]]
+        frame_dict = self.frames[0].get_init_dict()
+        del frame_dict['dt']
         obj = IonFrame(
             dt=dt,
-            position=self.position,
-            nside=self.nside,
-            dbot=self.dbot,
-            dtop=self.dtop,
-            ndlayers=self.ndlayers,
-            fbot=self.fbot,
-            ftop=self.ftop,
-            nflayers=self.nflayers,
+            **frame_dict,
             _pbar=False,
             autocalc=recalc,
         )
@@ -268,30 +214,16 @@ class IonModel:
             return obj
         else:
             idx = self._lr_ind(dt)
-            obj.dlayer.edens = interp_val(
-                self.models[idx[0]].dlayer.edens,
-                self.models[idx[1]].dlayer.edens,
+            obj.layer.edens = interp_val(
+                self.frames[idx[0]].layer.edens,
+                self.frames[idx[1]].layer.edens,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
             )
-            obj.dlayer.etemp = interp_val(
-                self.models[idx[0]].dlayer.etemp,
-                self.models[idx[1]].dlayer.etemp,
-                self._dts[idx[0]],
-                self._dts[idx[1]],
-                dt,
-            )
-            obj.flayer.edens = interp_val(
-                self.models[idx[0]].flayer.edens,
-                self.models[idx[1]].flayer.edens,
-                self._dts[idx[0]],
-                self._dts[idx[1]],
-                dt,
-            )
-            obj.flayer.etemp = interp_val(
-                self.models[idx[0]].flayer.etemp,
-                self.models[idx[1]].flayer.etemp,
+            obj.layer.etemp = interp_val(
+                self.frames[idx[0]].layer.etemp,
+                self.frames[idx[1]].layer.etemp,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
@@ -313,136 +245,93 @@ class IonModel:
             ).astype(datetime)
         return dts
 
-    def _time_animation(
+    @staticmethod
+    def _render_polar_plot_frames(alt: np.ndarray, az: np.ndarray, data: np.ndarray, dts: np.ndarray,
+                                  plot_kwargs: dict, desc: str):
+        cbmin, cbmax = np.nanmin(data[data != -np.inf]), np.nanmax(data[data != np.inf])
+        tmpdir = tempfile.mkdtemp()
+        plot_kwargs['cblim'] = (cbmin, cbmax)
+        try:
+            for i in tqdm(range(data.shape[0]), desc=desc):
+                plot_kwargs['saveto'] = os.path.join(tmpdir, str(i).zfill(6))
+                polar_plot((np.deg2rad(az), 90 - alt, data[i, ...]), dts[i], **plot_kwargs)
+        except Exception as e:
+            shutil.rmtree(tmpdir)
+            raise e
+        return tmpdir
+
+    def animate(
             self,
-            func: Callable,
-            saveto: str,
+            target: str | List["str"],
+            saveto: str = "./",
             freq: float | None = None,
             gridsize: int = 100,
             fps: int = 20,
             duration: int = 5,
-            title: str | None = None,
-            barlabel: str | None = None,
-            plotlabel: str | None = None,
-            dpi: int = 300,
-            cmap: str = "viridis",
-            pbar_label: str = "",
-            nancolor: str = "black",
-            infcolor: str = "white",
-            local_time: int | None = None,
             codec: str = "libx264",
+            **plot_kwargs,
     ):
         """
-        Abstract method for generating animations.
+        Calculates the dynamic evolution of specified parameters and generates an animated visualization.
+
+        :param target: Parameter or list of parameters to calculate. Options include:
+                       "atten" - Attenuation (integrated)
+                       "refr" - Refraction (integrated)
+                       "emiss" - Emission (integrated)
+                       "edens" - Electron density (height average)
+                       "etemp" - Electron temperature (height average)
         """
-
-        print(
-            TextColor.BOLD
-            + TextColor.BLUE
-            + "Animation making procedure started"
-            + f" [{pbar_label}]"
-            + TextColor.END
-            + TextColor.END
-        )
-        el, az = elaz_mesh(gridsize)
-        nframes = duration * fps
-        dts = self._nframes2dts(nframes)
+        print("Animation making procedure started")
+        target = [target] if isinstance(target, str) else target
+        alt, az = altaz_mesh(gridsize)
+        dts = self._nframes2dts(duration * fps)
         frames = [self.at(dt_) for dt_ in dts]
+        nframes = len(frames)
+        data_dict = {
+            'atten': np.empty((nframes, *alt.shape)),
+            'refr': np.empty((nframes, *alt.shape)),
+            'emiss': np.empty((nframes, *alt.shape)),
+            'edens': np.empty((nframes, *alt.shape)),
+            'etemp': np.empty((nframes, *alt.shape))
+        }
+        plot_data_dict = {
+            'atten': dict(cmap="plasma_r", barlabel=None),
+            'refr': dict(cmap="plasma", barlabel=r"deg"),
+            'emiss': dict(cmap="plasma", barlabel=r"K"),
+            'edens': dict(cmap="plasma", barlabel=r"$m^{-3}$"),
+            'etemp': dict(cmap="plasma", barlabel=r"$m^{-3}$"),
+        }
         nproc = np.min([cpu_count(), len(dts)])
-        pool = Pool(processes=nproc)
-        data = np.array(list(
-            tqdm(
-                pool.imap(
-                    func,
-                    zip(
-                        frames,
-                        itertools.repeat(el),
-                        itertools.repeat(az),
-                        itertools.repeat(freq),
-                    ),
-                ),
-                desc="[1/3] Calculating data",
-                total=len(dts),
-            )
-        ))
-
-        cbmin, cbmax = np.nanmin(data[data != -np.inf]), np.nanmax(data[data != np.inf])
-        tmpdir = tempfile.mkdtemp()
-        plot_data = [(np.deg2rad(az), 90 - el, data[i]) for i in range(len(data))]
-        plot_saveto = [os.path.join(tmpdir, str(i).zfill(6)) for i in range(len(data))]
-        del data
+        pool = Pool(nproc)
 
         try:
-            list(
-                tqdm(
-                    pool.imap(
-                        polar_plot_star,
-                        zip(
-                            plot_data,
-                            dts,
-                            itertools.repeat(self.position),
-                            itertools.repeat(freq),
-                            itertools.repeat(title),
-                            itertools.repeat(barlabel),
-                            itertools.repeat(plotlabel),
-                            itertools.repeat((cbmin, cbmax)),
-                            plot_saveto,
-                            itertools.repeat(dpi),
-                            itertools.repeat(cmap),
-                            itertools.repeat(None),
-                            itertools.repeat(nancolor),
-                            itertools.repeat(infcolor),
-                            itertools.repeat(local_time),
-                        ),
-                    ),
-                    desc="[2/3] Rendering frames",
-                    total=len(dts),
-                )
-            )
-            del plot_data
-            pool.close()
-            desc = "[3/3] Rendering video"
-            pic2vid(tmpdir, saveto, fps=fps, desc=desc, codec=codec)
+            print("Calculating data")
+            if "atten" in target or "refr" in target or "emiss" in target:
+                if freq is None:
+                    raise ValueError("Please specify the frequency for the simulation.")
+                for i, frame in enumerate(tqdm(frames, desc="Raytracing frames")):
+                    data_dict['refr'][i, ...], data_dict['atten'][i, ...], data_dict['emiss'][i, ...] = frame(alt, az, freq, _pool=pool)
 
+            if "edens" in target:
+                for i, frame in enumerate(tqdm(frames, desc="Interpolating ed")):
+                    data_dict['edens'][i, ...] = frame.layer.ed(alt, az)
+            if "etemp" in target:
+                for i, frame in enumerate(tqdm(frames, desc="Interpolating et")):
+                    data_dict['etemp'][i, ...] = frame.layer.et(alt, az)
+
+            plot_kwargs['pos'] = self.position
+
+            for key in data_dict:
+                if key in target:
+                    if 'cmap' not in plot_kwargs.keys():
+                        plot_kwargs[key]['cmap'] = plot_data_dict[key]['cmap']
+                    if 'barlabel' not in plot_kwargs.keys():
+                        plot_kwargs[key]['barlabel'] = plot_data_dict[key]['barlabel']
+                    tmpdir = self._render_polar_plot_frames(alt, az, data_dict[key], dts, plot_kwargs,
+                                                            desc=f"Rendering {key} frames")
+                    pic2vid(tmpdir, saveto + key, fps=fps, desc=f"Rendering {key} animation", codec=codec)
+                    shutil.rmtree(tmpdir)
         except Exception as e:
             pool.close()
-            print(e)
-
-        shutil.rmtree(tmpdir)
+            raise e
         return
-
-    def animate_atten_vs_time(self, freq: float, saveto: str = "./atten_vs_time", **kwargs):
-        """
-        Generates an animation of attenuation factor change with time.
-
-        :param saveto: Path to save a file including name.
-        :param freq: Frequency of observation.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        self._time_animation(
-            get_atten_from_frame,
-            saveto,
-            freq=freq,
-            pbar_label="D layer attenuation",
-            **kwargs,
-        )
-
-    def animate_refr_vs_time(self, freq: float, saveto: str = "./refr_vs_time", cmap: str = "viridis_r", **kwargs):
-        """
-        Generates an animation of refraction angle change with time.
-
-        :param saveto: Path to save a file including name.
-        :param freq: Frequency of observation.
-        :param cmap: Matplotlib colormap to use in plot.
-        :param kwargs: See `dionpy.plot_kwargs`.
-        """
-        barlabel = r"$deg$"
-        self._time_animation(
-            get_refr_from_frame,
-            saveto,
-            freq=freq,
-            barlabel=barlabel,
-            pbar_label="F layer refraction",
-            cmap=cmap,
-            **kwargs,
-        )

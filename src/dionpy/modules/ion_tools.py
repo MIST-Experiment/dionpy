@@ -14,8 +14,6 @@ def srange(
     :param re: Radius of the Earth in [m].
     :return: Distance in meters from the telescope to the point (theta, alt) in [m]
     """
-    if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
-        raise ValueError("Only one input parameter can be a numpy array.")
     r = -re * np.cos(theta) + np.sqrt(
         (re * np.cos(theta)) ** 2 + alt ** 2 + 2 * alt * re
     )

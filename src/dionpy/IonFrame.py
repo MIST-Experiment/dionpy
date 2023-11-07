@@ -9,14 +9,11 @@ import h5py
 import numpy as np
 
 from .IonLayer import IonLayer
-from .modules.helpers import none_or_array, elaz_mesh, open_save_file
+from .modules.helpers import none_or_array, altaz_mesh, open_save_file
 from .modules.ion_tools import trop_refr
 from .modules.parallel import shared_array
 from .modules.plotting import polar_plot
-
 from .raytracing import raytrace_star
-
-# TODO: choose better colormaps
 
 
 class IonFrame:
@@ -30,12 +27,10 @@ class IonFrame:
     :param position: Geographical position of an observer. Must be a tuple containing
                      latitude [deg], longitude [deg], and elevation [m].
     :param nside: Resolution of healpix grid.
-    :param dbot: Lower limit in [km] of the D layer of the ionosphere.
-    :param dtop: Upper limit in [km] of the D layer of the ionosphere.
-    :param ndlayers: Number of sub-layers in the D layer for intermediate calculations.
-    :param fbot: Lower limit in [km] of the F layer of the ionosphere.
-    :param ftop: Upper limit in [km] of the F layer of the ionosphere.
-    :param nflayers: Number of sub-layers in the F layer for intermediate calculations.
+    :param hbot: Lower limit in [km] of the layer of the ionosphere.
+    :param htop: Upper limit in [km] of the layer of the ionosphere.
+    :param nlayers: Number of sub-layers in the ionospheric layer for intermediate calculations.
+    :param rdeg_offset: Extends the angular horizon distance of calculated ionosphere in [degrees].
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
                         to IRI-2020.
@@ -53,7 +48,8 @@ class IonFrame:
             nside: int = 64,
             hbot: float = 60,
             htop: float = 500,
-            nlayers: int = 300,
+            nlayers: int = 500,
+            rdeg_offset: float = 5,
             iriversion: Literal[16, 20] = 20,
             echaim: bool = False,
             autocalc: bool = True,
@@ -67,6 +63,7 @@ class IonFrame:
             raise ValueError("Parameter dt must be a datetime object.")
         self.position = position
         self.nside = nside
+        self.rdeg_offset = rdeg_offset
         self.iriversion = iriversion
         self.echaim = echaim
         self.layer = IonLayer(
@@ -75,6 +72,7 @@ class IonFrame:
             hbot=hbot,
             htop=htop,
             nlayers=nlayers,
+            rdeg_offset=rdeg_offset,
             nside=nside,
             pbar=_pbar,
             name='Calculating Ne and Te',
@@ -149,6 +147,25 @@ class IonFrame:
             f"\tN sublayers:\t{self.layer.nlayers}\n"
         )
 
+    def get_init_dict(self):
+        """
+        Returns a dictionary containing the initial parameters for the IonFrame object.
+
+        Note:
+            - The default value for autocalc is False.
+        """
+        return {
+            'dt': self.dt,
+            'position': self.position,
+            'nside': self.nside,
+            'hbot': self.layer.hbot,
+            'htop': self.layer.htop,
+            'nlayers': self.layer.nlayers,
+            'rdeg_offset': self.rdeg_offset,
+            'iriversion': self.iriversion,
+            'echaim': self.echaim,
+        }
+
     def calc_layer(self, pbar: bool = False):
         """
         Calculates the layer's edens and etemp (use it if you set autocalc=False during the initialization).
@@ -175,6 +192,7 @@ class IonFrame:
         :param dec: Declination in [deg].
         :return: [alt, az], both in [deg]
         """
+        # TODO: make a function outside class
         from astropy.coordinates import EarthLocation, SkyCoord, AltAz
         from astropy.time import Time
         from astropy import units as u
@@ -263,7 +281,7 @@ class IonFrame:
         :return: A matplotlib figure.
         """
         barlabel = r"$m^{-3}$"
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         fed = self.layer.ed(alt, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - alt, fed),
@@ -274,30 +292,28 @@ class IonFrame:
             **kwargs,
         )
 
-    def plot_et(self, gridsize: int = 200, layer: int | None = None, cmap='viridis', **kwargs):
+    def plot_et(self, gridsize: int = 200, layer: int | None = None, **kwargs):
         """
         Visualize electron temperature in the ionospheric layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specific sub-layer to plot. If None - an average of all layers is calculated.
-        :param cmap: A colormap to use in the plot.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         barlabel = r"K"
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         fet = self.layer.et(alt, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - alt, fet),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
-            cmap=cmap,
             **kwargs,
         )
 
     def plot_atten(
-            self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='Purples_r', cblim=None, **kwargs
+            self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='plasma_r', cblim=None, **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -310,11 +326,9 @@ class IonFrame:
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         _, atten, _ = self(alt, az, freq, troposphere=troposphere)
         cblim = cblim or [None, 1]
-        # atten_db = 20 * np.log10(atten)
-        # barlabel = r"dB"
         return polar_plot(
             (np.deg2rad(az), 90 - alt, atten),
             dt=self.dt,
@@ -326,7 +340,7 @@ class IonFrame:
         )
 
     def plot_emiss(
-            self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='Oranges', cblim=None, **kwargs
+            self, freq: float, troposphere: bool = True, gridsize: int = 200, cblim=None, **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -334,12 +348,11 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
-        :param cmap: A colormap to use in the plot.
         :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         _, _, emiss = self(alt, az, freq, troposphere=troposphere)
         cblim = cblim or [0, None]
         barlabel = r"$K$"
@@ -349,7 +362,6 @@ class IonFrame:
             pos=self.position,
             freq=freq,
             barlabel=barlabel,
-            cmap=cmap,
             cblim=cblim,
             **kwargs,
         )
@@ -359,7 +371,6 @@ class IonFrame:
             freq: float,
             troposphere: bool = True,
             gridsize: int = 200,
-            cmap: str = 'Greens',
             cblim=None,
             **kwargs,
     ):
@@ -369,13 +380,12 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
-        :param cmap: A colormap to use in the plot.
         :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
         cblim = cblim or [0, None]
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         refr, _, _ = self(alt, az, freq, troposphere=troposphere)
         barlabel = r"$deg$"
         return polar_plot(
@@ -384,22 +394,20 @@ class IonFrame:
             pos=self.position,
             freq=freq,
             barlabel=barlabel,
-            cmap=cmap,
             cblim=cblim,
             **kwargs,
         )
 
-    def plot_troprefr(self, gridsize=200, cmap="Greens", cblim=None, **kwargs):
+    def plot_troprefr(self, gridsize=200, cblim=None, **kwargs):
         """
         Visualize tropospheric refraction.
 
         :param gridsize: Grid resolution of the plot.
-        :param cmap: A colormap to use in the plot.
         :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
         """
-        alt, az = elaz_mesh(gridsize)
+        alt, az = altaz_mesh(gridsize)
         troprefr = self.troprefr(alt)
         cblim = cblim or [0, None]
         barlabel = r"$deg$"
@@ -408,7 +416,6 @@ class IonFrame:
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
-            cmap=cmap,
             cblim=cblim,
             **kwargs,
         )

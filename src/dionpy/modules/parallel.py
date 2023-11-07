@@ -1,9 +1,9 @@
-import itertools
 import ctypes
+import itertools
 import multiprocessing as mp
 
-import iricore
 import echaim
+import iricore
 import numpy as np
 from scipy.interpolate import interp1d
 from tqdm import tqdm
