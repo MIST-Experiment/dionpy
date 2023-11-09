@@ -16,5 +16,5 @@ Contents
    installation
    quickstart
    overview
-   user_guide/index
-   reference/index
+   user_guide
+   reference

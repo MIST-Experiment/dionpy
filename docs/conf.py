@@ -18,7 +18,6 @@ from sphinx.config import Config
 
 sys.path.insert(0, os.path.abspath('../src'))
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'dionpy'
@@ -29,7 +28,6 @@ email = 'vadym.bidula@gmail.com'
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
 
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -39,6 +37,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx_autodoc_typehints',
+    'sphinxcontrib.video',
     'sphinxcontrib.bibtex',
 ]
 
@@ -46,6 +45,7 @@ bibtex_bibfiles = ['refs.bib']
 
 autodoc_default_flags = ['members', 'undoc-members', 'show-inheritance', 'inherited-members']
 autosummary_generate = True
+autodoc_member_order = 'bysource'
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -53,7 +53,6 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -68,11 +67,12 @@ html_theme_options = {
     'display_version': False,
 }
 simplify_optional_unions = True
+video_enforce_extra_source = True
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ["_static"]
 
 typehints_defaults = 'comma'
 
@@ -83,7 +83,6 @@ from sphinx.util.inspect import safe_getattr
 
 
 class AutoAutoSummary(Autosummary):
-
     option_spec = {
         'methods': directives.unchanged,
         'attributes': directives.unchanged,
@@ -123,7 +122,7 @@ class AutoAutoSummary(Autosummary):
         finally:
             return super(AutoAutoSummary, self).run()
 
+
 def setup(app):
+    app.add_css_file('theme_overrides.css')
     app.add_directive('autoautosummary', AutoAutoSummary)
-
-

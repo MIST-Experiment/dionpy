@@ -12,10 +12,11 @@ Quickstart
     dt = datetime(year=2022, month=7, day=17, hour=12, minute=0)
 
     # Instrument position: latitude [deg], longitude [deg], altitude [m]
-    pos = (79.418, -90.810, 0)
+    pos = (45.5048, -73.5772, 0)
 
-    # Define a model
-    frame = IonFrame(dt, pos)
+    # Define a model; nlayers and nside are modified for illustration,
+    # but it is better to use default parameters
+    frame = IonFrame(dt, pos, nlayers=100, nside=32)
 
     # Define frequency of observation in [MHz]
     freq = 40
@@ -25,16 +26,16 @@ Quickstart
     plt.show()
 
     # Plot ionospheric refraction
-    frame.plot_refr(freq, title=r"Refraction angle $\delta \theta$")
+    frame.plot_refr(freq, title=r"Refraction angle $\delta \theta$", cinfo=True)
     plt.show()
 
 .. figure:: images/qs_atten.png
-    :scale: 15
+    :width: 500px
     :align: center
 
 
 .. figure:: images/qs_refr.png
-    :scale: 15
+    :width: 500px
     :align: center
 
 .. code-block::
@@ -44,15 +45,12 @@ Quickstart
     az = np.linspace(0, 360, 100)  # Azimuth axis
     el_m, az_m = np.meshgrid(el, az)  # Rectangular coordinate grid
 
-    # Access attenuation in numeric form
-    atten = frame.atten(el_m, az_m, freq)
+    # Access attenuation and refraction in numeric form
+    refr, atten, emiss = frame.raytrace(el_m, az_m, freq)
 
-    print(f"Attenuation at {freq} MHz\n" +
+    print(f"Attenuation factor at {freq} MHz\n" +
           f"Min:\t{np.min(atten):.2f}\n" +
           f"Max:\t{np.max(atten):.2f}\n")
-
-    # Access refraction in numeric form
-    refr = frame.refr(el_m, az_m, freq)
 
     print(f"Refraction at {freq} MHz\n" +
           f"Min:\t{np.min(refr):.2f}\n" +
@@ -60,12 +58,14 @@ Quickstart
 
 .. code-block::
 
-    Attenuation at 40 MHz
-    Min:    0.83
-    Max:    0.98
+    Attenuation factor at 40 MHz
+    Min:    0.94
+    Max:    0.99
 
     Refraction at 40 MHz
     Min:    0.00
-    Max:    0.92
+    Max:    1.56
+
+
 
 
