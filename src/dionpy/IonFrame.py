@@ -36,9 +36,6 @@ class IonFrame:
                         to IRI-2020.
     :param echaim: Use ECHAIM model for electron density estimation.
     :param autocalc: If True - the model will be calculated immediately after definition.
-    :param single_layer: If selected - only one layer will be calculated.
-    :param _pbar: If True - a progress bar will appear.
-    :param **kwargs: Other parameters for ionospheric layer initialization.
     """
 
     def __init__(
@@ -53,9 +50,8 @@ class IonFrame:
             iriversion: Literal[16, 20] = 20,
             echaim: bool = False,
             autocalc: bool = True,
-            _pbar: bool = False,
             _pool: Union[Pool, None] = None,
-            **kwargs
+            **kwargs,
     ):
         if isinstance(dt, datetime):
             self.dt = dt
@@ -74,7 +70,6 @@ class IonFrame:
             nlayers=nlayers,
             rdeg_offset=rdeg_offset,
             nside=nside,
-            pbar=_pbar,
             name='Calculating Ne and Te',
             iriversion=iriversion,
             autocalc=autocalc,
@@ -87,22 +82,18 @@ class IonFrame:
                  alt: float | np.ndarray,
                  az: float | np.ndarray,
                  freq: float,
-                 _pbar_desc: str | None = None,
                  col_freq: str = "default",
                  troposphere: bool = True,
                  height_profile: bool = False,
-                 pbar=False,
                  _pool: Union[Pool, None] = None,
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
-        if isinstance(alt, float):
-            nproc = 1
-            b_alt = [alt]
-            b_az = [az]
-        else:
-            nproc = np.min([len(alt), cpu_count()])
-            b_alt = np.array_split(alt, nproc)
-            b_az = np.array_split(az, nproc)
+        b_alt = np.atleast_1d(alt).astype(np.float64)
+        b_az = np.atleast_1d(az).astype(np.float64)
+        nproc = np.min([len(b_alt), cpu_count()])
+        b_alt = np.array_split(b_alt, nproc)
+        b_az = np.array_split(b_az, nproc)
+
         pool = Pool(processes=nproc) if _pool is None else _pool
 
         sh_edens = shared_array(self.layer.edens)
@@ -125,9 +116,9 @@ class IonFrame:
                 ),
             )
         )
-        dtheta = np.squeeze(np.vstack([x[0] for x in res]))
-        atten = np.squeeze(np.vstack([x[1] for x in res]))
-        emiss = np.squeeze(np.vstack([x[2] for x in res]))
+        dtheta = np.squeeze(np.concatenate([x[0] for x in res], axis=0))
+        atten = np.squeeze(np.concatenate([x[1] for x in res], axis=0))
+        emiss = np.squeeze(np.concatenate([x[2] for x in res], axis=0))
         return dtheta, atten, emiss
 
     def __str__(self):
@@ -137,7 +128,7 @@ class IonFrame:
             f"Position:\n"
             f"\tlat = {self.position[0]:.2f} [deg]\n"
             f"\tlon = {self.position[1]:.2f} [deg]\n"
-            f"\talt = {self.position[0]:.2f} [m]\n"
+            f"\talt = {self.position[2]:.2f} [m]\n"
             f"NSIDE:\t{self.nside}\n"
             f"IRI version:\t20{self.iriversion}\n"
             f"Use E-CHAIM:\t{self.echaim}\n"
@@ -147,62 +138,53 @@ class IonFrame:
             f"\tN sublayers:\t{self.layer.nlayers}\n"
         )
 
-    def get_init_dict(self):
+    def raytrace(self,
+                 alt: float | np.ndarray,
+                 az: float | np.ndarray,
+                 freq: float,
+                 col_freq: str = "default",
+                 troposphere: bool = True,
+                 height_profile: bool = False,
+                 _pool: Union[Pool, None] = None,
+                 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Returns a dictionary containing the initial parameters for the IonFrame object.
+        Starts the raytracing procedure and calculates integrated refraction, absorption and emission in all specified
+        directions. As a shortcut to this method one can call the IonFrame(...) directly.
 
-        Note:
-            - The default value for autocalc is False.
+        :param alt: Altitude (elevation) of observation in [deg].
+        :param az: Azimuth of observation in [deg].
+        :param freq: Frequency of observation in [MHz].
+        :param col_freq: Model of colission frequency. Available options: \n
+                         "default" == "aggrawal" \n
+                         "aggrawal": https://ui.adsabs.harvard.edu/abs/1979P%26SS...27..753A/abstract \n
+                         "nicolet": [Nicolet, M. 1953, JATP, 3, 200] \n
+                         "setty": [Setty, C. S. G. K. 1972, IJRSP, 1, 38]
+        :param troposphere: Where to include the tropospheric refraction effect.
+        :param height_profile: If True, returns arrays of attenuation and emission before integration and a cumulative
+                               history of refraction.
+        :returns: (refraction, attenuation, emission)
         """
-        return {
-            'dt': self.dt,
-            'position': self.position,
-            'nside': self.nside,
-            'hbot': self.layer.hbot,
-            'htop': self.layer.htop,
-            'nlayers': self.layer.nlayers,
-            'rdeg_offset': self.rdeg_offset,
-            'iriversion': self.iriversion,
-            'echaim': self.echaim,
-        }
+        return self.__call__(alt, az, freq, col_freq, troposphere, height_profile, _pool)
 
-    def calc_layer(self, pbar: bool = False):
-        """
-        Calculates the layer's edens and etemp (use it if you set autocalc=False during the initialization).
-
-        :param pbar: If True - a progress bar will appear.
-        """
-        self.layer.calc(pbar)
-
-    def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
-        """
-        Approximation of the refraction in the troposphere recommended by the ITU-R:
-        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
-
-        :param alt: Elevation of observation(s) in [deg].
-        :return: Refraction in the troposphere in [deg].
-        """
-        return trop_refr(alt, self.position[2] * 1e-3)
-
-    def radec2altaz(self, ra: float | np.ndarray, dec: float | np.ndarray):
-        """
-        Converts sky coordinates to altitude and azimuth angles in horizontal CS.
-
-        :param ra: Right ascension in [deg].
-        :param dec: Declination in [deg].
-        :return: [alt, az], both in [deg]
-        """
-        # TODO: make a function outside class
-        from astropy.coordinates import EarthLocation, SkyCoord, AltAz
-        from astropy.time import Time
-        from astropy import units as u
-
-        location = EarthLocation(lat=self.position[0], lon=self.position[1], height=self.position[2] * u.m)
-        time = Time(self.dt)
-        altaz_cs = AltAz(location=location, obstime=time)
-        skycoord = SkyCoord(ra * u.deg, dec * u.deg)
-        aa_coord = skycoord.transform_to(altaz_cs)
-        return aa_coord.alt.value, aa_coord.az.value
+    # def radec2altaz(self, ra: float | np.ndarray, dec: float | np.ndarray):
+    #     """
+    #     Converts sky coordinates to altitude and azimuth angles in horizontal CS.
+    #
+    #     :param ra: Right ascension in [deg].
+    #     :param dec: Declination in [deg].
+    #     :return: [alt, az], both in [deg]
+    #     """
+    #     # TODO: make a function outside class
+    #     from astropy.coordinates import EarthLocation, SkyCoord, AltAz
+    #     from astropy.time import Time
+    #     from astropy import units as u
+    #
+    #     location = EarthLocation(lat=self.position[0], lon=self.position[1], height=self.position[2] * u.m)
+    #     time = Time(self.dt)
+    #     altaz_cs = AltAz(location=location, obstime=time)
+    #     skycoord = SkyCoord(ra * u.deg, dec * u.deg)
+    #     aa_coord = skycoord.transform_to(altaz_cs)
+    #     return aa_coord.alt.value, aa_coord.az.value
 
     def write_self_to_file(self, file: h5py.File):
         h5dir = f"{self.dt.year:04d}{self.dt.month:02d}{self.dt.day:02d}{self.dt.hour:02d}{self.dt.minute:02d}"
@@ -282,9 +264,9 @@ class IonFrame:
         """
         barlabel = r"$m^{-3}$"
         alt, az = altaz_mesh(gridsize)
-        fed = self.layer.ed(alt, az, layer)
+        edens = self.layer.ed(alt, az, layer)
         return polar_plot(
-            (np.deg2rad(az), 90 - alt, fed),
+            (np.deg2rad(az), 90 - alt, edens),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
@@ -313,7 +295,7 @@ class IonFrame:
         )
 
     def plot_atten(
-            self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='plasma_r', cblim=None, **kwargs
+            self, freq: float, troposphere: bool = True, gridsize: int = 200, cmap='plasma', cblim=None, **kwargs
     ):
         """
         Visualize ionospheric attenuation.
@@ -343,7 +325,7 @@ class IonFrame:
             self, freq: float, troposphere: bool = True, gridsize: int = 200, cblim=None, **kwargs
     ):
         """
-        Visualize ionospheric attenuation.
+        Visualize ionospheric emission.
 
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
@@ -371,6 +353,7 @@ class IonFrame:
             freq: float,
             troposphere: bool = True,
             gridsize: int = 200,
+            cmap: str = "plasma_r",
             cblim=None,
             **kwargs,
     ):
@@ -380,6 +363,7 @@ class IonFrame:
         :param freq: Frequency of observation in [Hz].
         :param troposphere: If True - the troposphere refraction correction will be applied before calculation.
         :param gridsize: Grid resolution of the plot.
+        :param cmap: A colormap to use in the plot.
         :param cblim: Colorbar limits.
         :param kwargs: See `dionpy.plot_kwargs`.
         :return: A matplotlib figure.
@@ -394,6 +378,7 @@ class IonFrame:
             pos=self.position,
             freq=freq,
             barlabel=barlabel,
+            cmap=cmap,
             cblim=cblim,
             **kwargs,
         )
@@ -419,3 +404,40 @@ class IonFrame:
             cblim=cblim,
             **kwargs,
         )
+
+    def calc(self, pbar: bool = False):
+        """
+        Calculates the layer's electron density and temperatur (use it if you set autocalc=False during the initialization).
+
+        :param pbar: If True - a progress bar will appear.
+        """
+        self.layer.calc(pbar)
+
+    def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
+        """
+        Approximation of the refraction in the troposphere recommended by the ITU-R:
+        https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.834-9-201712-I!!PDF-E.pdf
+
+        :param alt: Elevation of observation(s) in [deg].
+        :return: Refraction in the troposphere in [deg].
+        """
+        return trop_refr(alt, self.position[2] * 1e-3)
+
+    def get_init_dict(self):
+        """
+        Returns a dictionary containing the initial parameters for the IonFrame object.
+
+        Note:
+            - The default value for autocalc is False.
+        """
+        return {
+            'dt': self.dt,
+            'position': self.position,
+            'nside': self.nside,
+            'hbot': self.layer.hbot,
+            'htop': self.layer.htop,
+            'nlayers': self.layer.nlayers,
+            'rdeg_offset': self.rdeg_offset,
+            'iriversion': self.iriversion,
+            'echaim': self.echaim,
+        }

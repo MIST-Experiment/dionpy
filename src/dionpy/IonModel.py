@@ -95,7 +95,6 @@ class IonModel:
                         iriversion=iriversion,
                         echaim=echaim,
                         autocalc=autocalc,
-                        _pbar=False,
                         _pool=pool,
                     )
                 )
@@ -112,6 +111,43 @@ class IonModel:
                 f"Minutes per frame:\t{self.mpf}\n"
                 "" + frame_str
         )
+
+    def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
+        """
+        :param dt: Date/time of the frame.
+        :param recalc: If True - the :class:`IonFrame` object will be precisely calculated. If False - an interpolation
+                       of two closest frames will be used.
+        :return: :class:`IonFrame` at specified time.
+        """
+        if dt in self._dts:
+            idx = np.argwhere(self._dts == dt)
+            return self.frames[idx[0][0]]
+        frame_dict = self.frames[0].get_init_dict()
+        del frame_dict['dt']
+        obj = IonFrame(
+            dt=dt,
+            **frame_dict,
+            autocalc=recalc,
+        )
+        if recalc:
+            return obj
+        else:
+            idx = self._lr_ind(dt)
+            obj.layer.edens = interp_val(
+                self.frames[idx[0]].layer.edens,
+                self.frames[idx[1]].layer.edens,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            obj.layer.etemp = interp_val(
+                self.frames[idx[0]].layer.etemp,
+                self.frames[idx[1]].layer.etemp,
+                self._dts[idx[0]],
+                self._dts[idx[1]],
+                dt,
+            )
+            return obj
 
     def save(self, saveto: str = "./ionmodel"):
         """
@@ -192,44 +228,6 @@ class IonModel:
             return [idx, idx]
         return [idx - 1, idx]
 
-    def at(self, dt: datetime, recalc: bool = False) -> IonFrame:
-        """
-        :param dt: Date/time of the frame.
-        :param recalc: If True - the :class:`IonFrame` object will be precisely calculated. If False - an interpolation
-                       of two closest frames will be used.
-        :return: :class:`IonFrame` at specified time.
-        """
-        if dt in self._dts:
-            idx = np.argwhere(self._dts == dt)
-            return self.frames[idx[0][0]]
-        frame_dict = self.frames[0].get_init_dict()
-        del frame_dict['dt']
-        obj = IonFrame(
-            dt=dt,
-            **frame_dict,
-            _pbar=False,
-            autocalc=recalc,
-        )
-        if recalc:
-            return obj
-        else:
-            idx = self._lr_ind(dt)
-            obj.layer.edens = interp_val(
-                self.frames[idx[0]].layer.edens,
-                self.frames[idx[1]].layer.edens,
-                self._dts[idx[0]],
-                self._dts[idx[1]],
-                dt,
-            )
-            obj.layer.etemp = interp_val(
-                self.frames[idx[0]].layer.etemp,
-                self.frames[idx[1]].layer.etemp,
-                self._dts[idx[0]],
-                self._dts[idx[1]],
-                dt,
-            )
-            return obj
-
     def _nframes2dts(self, nframes: int | None) -> ndarray:
         """
         Returns a list of datetimes for animation based on specified number of frames (fps * duration).
@@ -280,6 +278,12 @@ class IonModel:
                        "emiss" - Emission (integrated)
                        "edens" - Electron density (height average)
                        "etemp" - Electron temperature (height average)
+        :param saveto: Location of the output files. Defaults to the script execution directory ("./").
+        :param freq: Frequency of observation.
+        :param gridsize: Grid resolution of calculated data.
+        :param fps: Frames per second.
+        :param duration: Total duration of the video in seconds.
+        :param codec: Specify the codec for ffmpeg to use.
         """
         print("Animation making procedure started")
         target = [target] if isinstance(target, str) else target
@@ -295,8 +299,8 @@ class IonModel:
             'etemp': np.empty((nframes, *alt.shape))
         }
         plot_data_dict = {
-            'atten': dict(cmap="plasma_r", barlabel=None),
-            'refr': dict(cmap="plasma", barlabel=r"deg"),
+            'atten': dict(cmap="plasma", barlabel=None),
+            'refr': dict(cmap="plasma_r", barlabel=r"deg"),
             'emiss': dict(cmap="plasma", barlabel=r"K"),
             'edens': dict(cmap="plasma", barlabel=r"$m^{-3}$"),
             'etemp': dict(cmap="plasma", barlabel=r"$m^{-3}$"),
@@ -310,7 +314,9 @@ class IonModel:
                 if freq is None:
                     raise ValueError("Please specify the frequency for the simulation.")
                 for i, frame in enumerate(tqdm(frames, desc="Raytracing frames")):
-                    data_dict['refr'][i, ...], data_dict['atten'][i, ...], data_dict['emiss'][i, ...] = frame(alt, az, freq, _pool=pool)
+                    data_dict['refr'][i, ...], data_dict['atten'][i, ...], data_dict['emiss'][i, ...] = frame(alt, az,
+                                                                                                              freq,
+                                                                                                              _pool=pool)
 
             if "edens" in target:
                 for i, frame in enumerate(tqdm(frames, desc="Interpolating ed")):
@@ -320,13 +326,14 @@ class IonModel:
                     data_dict['etemp'][i, ...] = frame.layer.et(alt, az)
 
             plot_kwargs['pos'] = self.position
+            plot_kwargs['freq'] = freq
 
             for key in data_dict:
                 if key in target:
                     if 'cmap' not in plot_kwargs.keys():
-                        plot_kwargs[key]['cmap'] = plot_data_dict[key]['cmap']
+                        plot_kwargs['cmap'] = plot_data_dict[key]['cmap']
                     if 'barlabel' not in plot_kwargs.keys():
-                        plot_kwargs[key]['barlabel'] = plot_data_dict[key]['barlabel']
+                        plot_kwargs['barlabel'] = plot_data_dict[key]['barlabel']
                     tmpdir = self._render_polar_plot_frames(alt, az, data_dict[key], dts, plot_kwargs,
                                                             desc=f"Rendering {key} frames")
                     pic2vid(tmpdir, saveto + key, fps=fps, desc=f"Rendering {key} animation", codec=codec)

@@ -59,13 +59,13 @@ def is_iterable(x):
     return False
 
 
-def check_elaz_shape(el: float | np.ndarray, az: float | np.ndarray):
+def check_elaz_shape(alt: float | np.ndarray, az: float | np.ndarray):
     """
     Checks shape and type of input elevation and azimuth.
     """
-    if not isinstance(el, float) and not isinstance(az, float):
-        if isinstance(el, np.ndarray) and isinstance(el, np.ndarray):
-            if not el.shape == az.shape:
+    if not isinstance(alt, (float, int)) or not isinstance(az, (float, int)):
+        if isinstance(alt, np.ndarray) and isinstance(az, np.ndarray):
+            if not alt.shape == az.shape:
                 raise ValueError("Elevation and azimuth must be the same length.")
         else:
             raise ValueError(
@@ -74,7 +74,7 @@ def check_elaz_shape(el: float | np.ndarray, az: float | np.ndarray):
 
 
 def sky2ll(
-        el: float | np.ndarray,
+        alt: float | np.ndarray,
         az: float | np.ndarray,
         height: float,
         pos: Sequence[float, float, float],
@@ -82,14 +82,14 @@ def sky2ll(
     """
     Converts visible elevation and azimuth to geographic coordinates with given height of the visible point.
 
-    :param el: Elevation of observation(s) in deg.
+    :param alt: Altitude (elevation) of observation(s) in deg.
     :param az: Azimuth of observation(s) in deg.
     :param height: Height of observable point(s) in km.
     :param pos: Geographical coordinates and height in m of the telescope
     :return: Observable geographical latitude and longitude.
     """
-    d_srange = srange(np.deg2rad(90 - el), height * 1e3)
-    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, ell=Ellipsoid(R_EARTH, R_EARTH))
+    d_srange = srange(np.deg2rad(90 - alt), height * 1e3)
+    obs_lat, obs_lon, _ = aer2geodetic(az, alt, d_srange, *pos, ell=Ellipsoid(R_EARTH, R_EARTH))
     return obs_lat, obs_lon
 
 

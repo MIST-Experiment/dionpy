@@ -18,7 +18,7 @@ plot_kwargs = {
     "freq": "Float representing a frequency of an observation. If None - will not be specified under plot.",
     "title": "Title of the plot",
     "barlabel": "Label near colorbar. Most functions override this parameter.",
-    "plotlabel": "Label under plot. Usually includes date/time, location and frequency of an observation. If None - "
+    "plotlabel": "Label on the plot. Usually includes date/time, location and frequency of an observation. If None - "
                  "will not appear.",
     "cblim": "Tuple containing min and max values of the colorbar scale. If any of limits is None - max/min values is "
              "automatically calculated.",
@@ -107,7 +107,9 @@ def polar_plot(
     cbar.set_label(label=barlabel, size=labelsize)
     cbar.ax.tick_params(labelsize=labelsize)
     cbar.ax.yaxis.get_offset_text().set_fontsize(labelsize)
-    plt.title(title, fontsize=14, pad=20)
+
+    title_pad = 20 if cinfo else 55
+    plt.title(title, fontsize=14, pad=title_pad)
 
     if plotlabel == "":
         if pos is not None:
@@ -119,7 +121,7 @@ def polar_plot(
                 )
             elif isinstance(local_time, int):
                 plotlabel += (
-                        "\nLocal time: "
+                        "\nLocal t: "
                         + datetime.strftime(
                     dt + timedelta(hours=local_time), "%Y-%m-%d %H:%M"
                 )
@@ -133,7 +135,7 @@ def polar_plot(
             ax.grid(linestyle=":", alpha=0)
             props = dict(boxstyle='round', facecolor='black', alpha=0.0)
             textprorps = dict(transform=ax.transAxes, ha="center", va="center", bbox=props, family='monospace',
-                              fontsize=11, color='black' if cl_sum > 0.75 else 'white')
+                              fontsize=11, color=labelcolor)
             plt.text(0.5, 0.5, plotlabel, **textprorps)
             _custom_grid(ax, color=labelcolor)
         else:

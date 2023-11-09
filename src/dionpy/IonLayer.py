@@ -38,7 +38,6 @@ class IonLayer:
     :param nlayers: Number of sub-layers in the layer for intermediate calculations.
     :param nside: Resolution of healpix grid.
     :param rdeg_offset: Extend radius of coordinate plane in [deg].
-    :param pbar: If True - a progress bar will appear.
     :param name: Name of the layer for description use.
     :param iriversion: Version of the IRI model to use. Must be a two digit integer that refers to
                         the last two digits of the IRI version number. For example, version 20 refers
@@ -55,7 +54,6 @@ class IonLayer:
             nlayers: int = 100,
             nside: int = 64,
             rdeg_offset: float = 5,
-            pbar: bool = True,
             name: str | None = None,
             iriversion: int = 20,
             autocalc: bool = True,
@@ -92,7 +90,7 @@ class IonLayer:
         self.etemp = np.zeros((len(self._obs_pixels), nlayers))
 
         if autocalc:
-            self.calc(pbar=pbar, _pool=_pool)
+            self.calc(_pool=_pool)
 
     def get_init_dict(self):
         """
@@ -120,7 +118,7 @@ class IonLayer:
         blon = np.array_split(self._obs_lons, nbatches)
         return nbatches, nproc, blat, blon
 
-    def calc(self, pbar=True, _pool: Union[Pool, None] = None):
+    def calc(self, _pool: Union[Pool, None] = None):
         """
         Makes several calls to iricore in parallel requesting electron density and
         electron temperature for future use in attenuation modeling.
@@ -136,20 +134,15 @@ class IonLayer:
 
         pool = Pool(processes=nproc) if _pool is None else _pool
         res = list(
-            tqdm(
-                pool.imap(
-                    iri_star,
-                    zip(
-                        itertools.repeat(self.dt),
-                        itertools.repeat(heights),
-                        blat,
-                        blon,
-                        itertools.repeat(self.iriversion),
-                    ),
+            pool.imap(
+                iri_star,
+                zip(
+                    itertools.repeat(self.dt),
+                    itertools.repeat(heights),
+                    blat,
+                    blon,
+                    itertools.repeat(self.iriversion),
                 ),
-                total=nbatches,
-                disable=not pbar,
-                desc=self.name,
             )
         )
 
@@ -159,10 +152,10 @@ class IonLayer:
         self.edens = nan2zero(np.vstack([r.edens for r in res]))
         self.etemp = nan2zero(np.vstack([r.etemp for r in res]))
         if self.echaim:
-            self._calc_echaim(pbar, _pool)
+            self._calc_echaim(_pool)
         return
 
-    def _calc_echaim(self, pbar=True, _pool: Union[Pool, None] = None):
+    def _calc_echaim(self, _pool: Union[Pool, None] = None):
         """
         Replace electron density with that calculated with ECHAIM.
         """
@@ -172,22 +165,17 @@ class IonLayer:
         pool = Pool(processes=nproc) if _pool is None else _pool
 
         res = list(
-            tqdm(
-                pool.imap(
-                    echaim_star,
-                    zip(
-                        blat,
-                        blon,
-                        itertools.repeat(heights),
-                        itertools.repeat(self.dt),
-                        itertools.repeat(True),
-                        itertools.repeat(True),
-                        itertools.repeat(True),
-                    ),
+            pool.imap(
+                echaim_star,
+                zip(
+                    blat,
+                    blon,
+                    itertools.repeat(heights),
+                    itertools.repeat(self.dt),
+                    itertools.repeat(True),
+                    itertools.repeat(True),
+                    itertools.repeat(True),
                 ),
-                total=nbatches,
-                disable=not pbar,
-                desc=self.name,
             )
         )
 
