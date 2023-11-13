@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from typing import Iterable, Sequence
 
+import h5py
 import healpy as hp
 import numpy as np
 from ffmpeg_progress_yield import FfmpegProgress
@@ -11,7 +12,7 @@ from tqdm import tqdm
 
 from .ion_tools import srange
 
-R_EARTH = 6378100.0    # in [m]
+R_EARTH = 6378100.0  # in [m]
 
 
 class TextColor:
@@ -30,6 +31,19 @@ class TextColor:
     UNDERLINE = "\033[4m"
     END = "\033[0m"
 
+    @classmethod
+    def boldblue(cls, msg: str):
+        return cls.BOLD + cls.BLUE + msg + cls.END + cls.END
+
+    @classmethod
+    def boldyellow(cls, msg: str):
+        return cls.BOLD + cls.YELLOW + msg + cls.END + cls.END
+
+    @classmethod
+    def bold(cls, msg: str):
+        return cls.BOLD + msg + cls.END
+
+
 def none_or_array(vals: None | Iterable) -> np.ndarray | None:
     """
     Used for data loading from HDF files. Converts not None values to np.arrays.
@@ -45,13 +59,13 @@ def is_iterable(x):
     return False
 
 
-def check_elaz_shape(el: float | np.ndarray, az: float | np.ndarray):
+def check_elaz_shape(alt: float | np.ndarray, az: float | np.ndarray):
     """
     Checks shape and type of input elevation and azimuth.
     """
-    if not isinstance(el, float) and not isinstance(az, float):
-        if isinstance(el, np.ndarray) and isinstance(el, np.ndarray):
-            if not el.shape == az.shape:
+    if not isinstance(alt, (float, int)) or not isinstance(az, (float, int)):
+        if isinstance(alt, np.ndarray) and isinstance(az, np.ndarray):
+            if not alt.shape == az.shape:
                 raise ValueError("Elevation and azimuth must be the same length.")
         else:
             raise ValueError(
@@ -60,52 +74,52 @@ def check_elaz_shape(el: float | np.ndarray, az: float | np.ndarray):
 
 
 def sky2ll(
-    el: float | np.ndarray,
-    az: float | np.ndarray,
-    height: float,
-    pos: Sequence[float, float, float],
+        alt: float | np.ndarray,
+        az: float | np.ndarray,
+        height: float,
+        pos: Sequence[float, float, float],
 ) -> [float | np.ndarray, float | np.ndarray]:
     """
     Converts visible elevation and azimuth to geographic coordinates with given height of the visible point.
 
-    :param el: Elevation of observation(s) in deg.
+    :param alt: Altitude (elevation) of observation(s) in deg.
     :param az: Azimuth of observation(s) in deg.
     :param height: Height of observable point(s) in km.
     :param pos: Geographical coordinates and height in m of the telescope
     :return: Observable geographical latitude and longitude.
     """
-    d_srange = srange(np.deg2rad(90 - el), height * 1e3)
-    obs_lat, obs_lon, _ = aer2geodetic(az, el, d_srange, *pos, ell=Ellipsoid(R_EARTH, R_EARTH))
+    d_srange = srange(np.deg2rad(90 - alt), height * 1e3)
+    obs_lat, obs_lon, _ = aer2geodetic(az, alt, d_srange, *pos, ell=Ellipsoid(R_EARTH, R_EARTH))
     return obs_lat, obs_lon
 
 
-def elaz_mesh(gridsize: int) -> [np.ndarray, np.ndarray]:
+def altaz_mesh(gridsize: int) -> [np.ndarray, np.ndarray]:
     """
     :param gridsize: Grid resolution.
     :return: Meshgrid of elevation and azimuth for all visible sky.
     """
-    el = np.linspace(0, 90, gridsize, endpoint=True)
+    alt = np.linspace(0, 90, gridsize, endpoint=True)
     az = np.linspace(0, 360, gridsize)
-    els, azs = np.meshgrid(el, az)
-    return els, azs
+    alts, azs = np.meshgrid(alt, az)
+    return alts, azs
 
 
 def eval_layer(
-    el: float | np.ndarray,
-    az: float | np.ndarray,
-    nside: int,
-    position: Sequence[float, float, float],
-    hbot: float,
-    htop: float,
-    nlayers: int,
-    obs_pixels: Sequence[int],
-    data: float | np.ndarray,
-    layer: int | None = None,
+        alt: float | np.ndarray,
+        az: float | np.ndarray,
+        nside: int,
+        position: Sequence[float, float, float],
+        hbot: float,
+        htop: float,
+        nlayers: int,
+        obs_pixels: Sequence[int],
+        data: float | np.ndarray,
+        layer: int | None = None,
 ):
     """
     Calculates interpolated values on healpix grid.
 
-    :param el: Elevation.
+    :param alt: Elevation.
     :param az: Azimuth.
     :param nside: Resolution of healpix grid.
     :param position:
@@ -118,21 +132,21 @@ def eval_layer(
                   If None - an average over all layers is returned.
     :return: Interpolated values at specified elevation and azimuth.
     """
-    check_elaz_shape(el, az)
+    check_elaz_shape(alt, az)
     heights = np.linspace(hbot, htop, nlayers)
     map_ = np.zeros(hp.nside2npix(nside)) + hp.UNSEEN
     if layer is None:
-        res = np.empty((*el.shape, nlayers))
+        res = np.empty((*alt.shape, nlayers))
         for i in range(nlayers):
             map_[obs_pixels] = data[:, i]
-            obs_lat, obs_lon = sky2ll(el, az, heights[i], position)
+            obs_lat, obs_lon = sky2ll(alt, az, heights[i], position)
             res[:, :, i] = hp.pixelfunc.get_interp_val(
                 map_, obs_lon, obs_lat, lonlat=True
             )
         return res.mean(axis=2)
     elif isinstance(layer, int) and layer < nlayers + 1:
         map_[obs_pixels] = data[:, layer]
-        obs_lat, obs_lon = sky2ll(el, az, heights[layer], position)
+        obs_lat, obs_lon = sky2ll(alt, az, heights[layer], position)
         res = hp.pixelfunc.get_interp_val(map_, obs_lon, obs_lat, lonlat=True)
         return res
     else:
@@ -142,11 +156,11 @@ def eval_layer(
 
 
 def pic2vid(
-    imdir: str,
-    saveto: str,
-    fps: int = 20,
-    desc: str | None = None,
-    codec: str = "libx264",
+        imdir: str,
+        saveto: str,
+        fps: int = 20,
+        desc: str | None = None,
+        codec: str = "libx264",
 ):
     """
     Renders existing set of pictures to mp4 video.
@@ -161,19 +175,19 @@ def pic2vid(
     desc = desc or "Rendering video"
     cmd = [
         "ffmpeg",
-        "-r",
-        f"{fps}",
-        "-i",
-        os.path.join(imdir, "%06d.png"),
-        "-vcodec",
-        codec,
+        "-r", f"{fps}",
+        "-pattern_type", "glob",
+        "-i", f"{os.path.join(imdir, '*.png')}",
+        "-vcodec", codec,
+        "-pix_fmt", "yuv420p",
         "-y",
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
         saveto,
     ]
     ff = FfmpegProgress(cmd)
     with tqdm(total=100, position=0, desc=desc, leave=True) as pbar:
         for progress in ff.run_command_with_progress():
-            pbar.update(progress - pbar.n)
+            pbar.update(int(progress - pbar.n))
 
 
 def get_atten_from_frame(args):
@@ -186,3 +200,14 @@ def get_refr_from_frame(args):
 
 def nan2zero(arr):
     return np.where(np.isnan(arr), 0, arr)
+
+
+def open_save_file(saveto):
+    head, tail = os.path.split(saveto)
+    if not os.path.exists(head) and len(head) > 0:
+        os.makedirs(head)
+    if not saveto.endswith(".h5"):
+        saveto += ".h5"
+
+    file = h5py.File(saveto, mode="w")
+    return file

@@ -12,21 +12,20 @@ def srange(
     :param theta: Zenith angle in [rad].
     :param alt: Altitude in [m].
     :param re: Radius of the Earth in [m].
-    :return: Distance in [m] from the telescope to the point (theta, alt)
+    :return: Distance in meters from the telescope to the point (theta, alt) in [m]
     """
-    if isinstance(theta, np.ndarray) and isinstance(alt, np.ndarray):
-        raise ValueError("Only one input parameter can be a numpy array.")
     r = -re * np.cos(theta) + np.sqrt(
         (re * np.cos(theta)) ** 2 + alt ** 2 + 2 * alt * re
     )
     return r
 
 
-def plasfreq(n_e: float | np.ndarray, angular=True) -> float | np.ndarray:
+def plasfreq(n_e: float | np.ndarray, angular: bool = True) -> float | np.ndarray:
     """
-    Angular (omega) plasma frequency in [Hz].
+    Angular (omega) plasma frequency.
 
     :param n_e: Electron density in [m^-3].
+    :param angular: If True - return angular frequency, otherwise frequency.
     :return: Plasma frequency of cold electrons in Hz.
     """
     e = 1.60217662e-19
@@ -49,7 +48,7 @@ def refr_index(n_e: float | np.ndarray, freq: float):
     :return: Refractive index of the ionosphere from electron density.
     """
     nu_p = plasfreq(n_e, angular=False)
-    return np.sqrt(1 - (0.5 * nu_p / np.pi / freq) ** 2)
+    return np.sqrt(1 - (nu_p / freq) ** 2)
 
 
 def refr_angle(

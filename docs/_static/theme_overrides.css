@@ -1,0 +1,4 @@
+/* override table no-wrap */
+.wy-table-responsive table td{
+    white-space: normal !important;
+}

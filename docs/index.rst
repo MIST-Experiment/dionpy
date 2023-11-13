@@ -6,6 +6,13 @@
 Welcome to dionpy's documentation!
 ==================================
 
+.. note::
+
+   For a more in-depth review of the model, see `this work
+   <https://www.physics.mcgill.ca/~chiang/theses/bidula.pdf>`_. However, in contradistinction
+   to the thesis, the newest version of Dionpy no longer separates the D-layer and F-layer of the ionosphere but
+   performs raytracing of attenuation and refraction simultaneously.
+
 Contents
 --------
 
@@ -15,6 +22,5 @@ Contents
 
    installation
    quickstart
-   overview
-   user_guide/index
-   reference/index
+   user_guide
+   reference
