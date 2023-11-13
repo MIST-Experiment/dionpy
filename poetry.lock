@@ -1045,13 +1045,13 @@ test = ["ipykernel", "jsonschema", "pytest (>=3.6.0)", "pytest-cov", "pytz"]
 
 [[package]]
 name = "iricore"
-version = "1.5.3"
+version = "1.6.1"
 description = "A Python wraper to the Inernational Ionosphere Model"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "iricore-1.5.3-cp310-cp310-manylinux_2_35_x86_64.whl", hash = "sha256:051a8ddea44adc36ae119eac273e38be067889e3557572f592e3edcb042a5208"},
-    {file = "iricore-1.5.3.tar.gz", hash = "sha256:c4b67c4f00700ce53aeb904363566a961436e8b14ea98730ee36133d21fefce5"},
+    {file = "iricore-1.6.1-cp310-cp310-manylinux_2_35_x86_64.whl", hash = "sha256:c0e4a60c6264eac447bf2b114469459edaab3288f957b31a8704e54b994bc165"},
+    {file = "iricore-1.6.1.tar.gz", hash = "sha256:d4ef915ac3dce9596d2d06d79d4d5804788a126ddd8b11250127b41dbab8faab"},
 ]
 
 [package.dependencies]
@@ -3393,6 +3393,25 @@ lint = ["docutils-stubs", "flake8", "mypy"]
 test = ["pytest"]
 
 [[package]]
+name = "sphinxcontrib-video"
+version = "0.2.0"
+description = "Allows embedding of HTML5 videos in sphinx"
+optional = false
+python-versions = ">=3.6.9"
+files = [
+    {file = "sphinxcontrib-video-0.2.0.tar.gz", hash = "sha256:c98afef50a5452d5a6960fd57c6b57b71da9b825cadaa56c1b6c77338bfd0284"},
+    {file = "sphinxcontrib_video-0.2.0-py3-none-any.whl", hash = "sha256:8973278316c02547efd0910bfd69205385462c423885cf03edc28b1c66f3b23c"},
+]
+
+[package.dependencies]
+sphinx = "*"
+
+[package.extras]
+dev = ["mypy", "nox", "pre-commit"]
+doc = ["pydata-sphinx-theme (==0.13.0rc3)", "sphinx-design"]
+test = ["beautifulsoup4", "pytest", "pytest-cov", "pytest-regressions"]
+
+[[package]]
 name = "stack-data"
 version = "0.6.3"
 description = "Extract data from python stack frames and tracebacks for informative displays"
@@ -3666,7 +3685,10 @@ files = [
 docs = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (<7.2.5)", "sphinx (>=3.5)", "sphinx-lint"]
 testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy (>=0.9.1)", "pytest-ruff"]
 
+[extras]
+numba = []
+
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9, <3.12"
-content-hash = "bf0ca37263542e8011c1d9254ae862b53249c98881b20ee8fa2a312035b962a1"
+content-hash = "b777c694699a9f88ba730152f708fbad686e33178ef080bc132ca8745481082f"

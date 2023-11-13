@@ -21,12 +21,12 @@ sys.path.insert(0, os.path.abspath('../src'))
 # -- Project information -----------------------------------------------------
 
 project = 'dionpy'
-copyright = '2022, Vadym Bidula'
+copyright = '2023, Vadym Bidula'
 author = 'Vadym Bidula'
 email = 'vadym.bidula@gmail.com'
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '1.1.0'
 
 # -- General configuration ---------------------------------------------------
 
