@@ -12,9 +12,6 @@
 #
 import os
 import sys
-from typing import Any, Callable, Union
-
-from sphinx.config import Config
 
 sys.path.insert(0, os.path.abspath('../src'))
 
