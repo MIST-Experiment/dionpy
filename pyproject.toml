@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "1.1.0"
+version = "1.1.1"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
