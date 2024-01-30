@@ -1,20 +1,16 @@
 import ctypes
-import itertools
 import multiprocessing as mp
+from multiprocessing import shared_memory
 
-import echaim
-import iricore
 import numpy as np
 from scipy.interpolate import interp1d
-from tqdm import tqdm
 
 
-def iri_star(pars):
-    return iricore.iri(*pars)
-
-
-def echaim_star(pars):
-    return echaim.density_profile(*pars)
+def create_shared_block(array):
+    shm = shared_memory.SharedMemory(create=True, size=array.nbytes)
+    np_array = np.ndarray(array.shape, dtype=array.dtype, buffer=shm.buf)
+    np_array[:] = array[:]
+    return shm, np_array
 
 
 def shared_array(array):
@@ -53,33 +49,3 @@ def calc_interp_val(el, az, funcs, dts, *args, **kwargs):
 
 def calc_interp_val_star(pars):
     return calc_interp_val(*pars[:-2], *pars[-2], **pars[-1])
-
-
-def calc_interp_val_par(el, az, funcs, dts, pbar_desc, *args, **kwargs):
-    """
-    Implements parallel calculation and interpolation of data at given datetimes.
-    """
-    nproc = np.min([mp.cpu_count(), len(funcs)])
-    disable = True if pbar_desc is None else False
-    rep_args = [args for _ in range(len(dts))]
-    rep_kwargs = [kwargs for _ in range(len(dts))]
-    with mp.Pool(processes=nproc) as pool:
-        res = list(
-            tqdm(
-                pool.imap(
-                    calc_interp_val_star,
-                    zip(
-                        itertools.repeat(el),
-                        itertools.repeat(az),
-                        funcs,
-                        dts,
-                        rep_args,
-                        rep_kwargs,
-                    ),
-                ),
-                total=len(dts),
-                disable=disable,
-                desc=pbar_desc,
-            )
-        )
-    return np.array(res)

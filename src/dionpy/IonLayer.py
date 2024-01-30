@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import ctypes
 import itertools
 from datetime import datetime
-from multiprocessing import cpu_count, Pool
+import multiprocessing as mp
 from typing import Union, Sequence
 
 import healpy as hp
 import numpy as np
 from tqdm import tqdm
 
-from .modules.helpers import eval_layer, nan2zero, R_EARTH
-from .modules.parallel import iri_star, echaim_star
+from .modules.helpers import eval_layer, R_EARTH
+from .modules.parallel import create_shared_block
+from .modules.parallel_iri import parallel_iri, parallel_echaim
 
 
 def _estimate_ahd(htop: float, hint: float = 0, r: float = R_EARTH*1e-3):
@@ -58,7 +60,7 @@ class IonLayer:
             iriversion: int = 20,
             autocalc: bool = True,
             echaim: bool = False,
-            _pool: Union[Pool, None] = None,
+            _pool: Union[mp.Pool, None] = None,
     ):
         self.rdeg = _estimate_ahd(htop, position[-1] * 1e-3) + rdeg_offset
         self.rdeg_offset = rdeg_offset
@@ -86,11 +88,15 @@ class IonLayer:
         self._obs_lons, self._obs_lats = hp.pix2ang(
             self.nside, self._obs_pixels, lonlat=True
         )
-        self.edens = np.zeros((len(self._obs_pixels), nlayers))
-        self.etemp = np.zeros((len(self._obs_pixels), nlayers))
+        self.edens = np.zeros((len(self._obs_pixels), nlayers), dtype=np.float32)
+        self.etemp = np.zeros((len(self._obs_pixels), nlayers), dtype=np.float32)
 
         if autocalc:
+            import time
+            t1 = time.time()
             self.calc(_pool=_pool)
+            # print(self.edens.mean())
+            print(time.time() - t1)
 
     def get_init_dict(self):
         """
@@ -113,77 +119,96 @@ class IonLayer:
 
     def _batch_split(self, batch):
         nbatches = len(self._obs_pixels) // batch + 1
-        nproc = np.min([cpu_count(), nbatches])
+        nproc = np.min([mp.cpu_count(), nbatches])
         blat = np.array_split(self._obs_lats, nbatches)
         blon = np.array_split(self._obs_lons, nbatches)
         return nbatches, nproc, blat, blon
 
-    def calc(self, _pool: Union[Pool, None] = None):
-        """
-        Makes several calls to iricore in parallel requesting electron density and
-        electron temperature for future use in attenuation modeling.
-        """
 
-        nbatches, nproc, blat, blon = self._batch_split(200)
-
+    def calc(self, _pool=None):
         heights = (
             self.hbot,
             self.htop,
             (self.htop - self.hbot) / (self.nlayers - 1) - 1e-6,
         )
 
-        pool = Pool(processes=nproc) if _pool is None else _pool
-        res = list(
-            pool.imap(
-                iri_star,
-                zip(
-                    itertools.repeat(self.dt),
-                    itertools.repeat(heights),
-                    blat,
-                    blon,
-                    itertools.repeat(self.iriversion),
-                ),
+        batch_size = 200
+        nbatches, nproc, batch_lat, batch_lon = self._batch_split(batch_size)
+        batch_i = np.zeros(nbatches, dtype=np.int32)
+        for i in range(nbatches-1):
+            batch_i[i+1] = batch_i[i] + len(batch_lat[i])
+        shm_edens, shedens = create_shared_block(self.edens)
+        shm_etemp, shetemp = create_shared_block(self.etemp)
+
+        pool = _pool or mp.get_context('fork').Pool(processes=nproc)
+        pool.starmap(
+            parallel_iri,
+            zip(
+                itertools.repeat(self.dt),
+                itertools.repeat(heights),
+                batch_lat,
+                batch_lon,
+                itertools.repeat(shm_edens.name),
+                itertools.repeat(shm_etemp.name),
+                itertools.repeat(self.edens.shape),
+                batch_i,
+                itertools.repeat(self.iriversion),
             )
         )
 
         if _pool is None:
             pool.close()
 
-        self.edens = nan2zero(np.vstack([r.edens for r in res]))
-        self.etemp = nan2zero(np.vstack([r.etemp for r in res]))
-        if self.echaim:
-            self._calc_echaim(_pool)
-        return
+        self.edens[:] = shedens[:]
+        self.etemp[:] = shetemp[:]
 
-    def _calc_echaim(self, _pool: Union[Pool, None] = None):
+        shm_edens.close()
+        shm_edens.unlink()
+        shm_etemp.close()
+        shm_etemp.unlink()
+
+        if self.echaim:
+            self._calc_echaim(_pool=_pool)
+
+
+    def _calc_echaim(self, _pool: Union[mp.Pool, None] = None):
         """
         Replace electron density with that calculated with ECHAIM.
         """
-        nbatches, nproc, blat, blon = self._batch_split(100)
         heights = np.linspace(self.hbot, self.htop, self.nlayers, endpoint=True)
+        batch_size = 100
+        nbatches, nproc, batch_lat, batch_lon = self._batch_split(batch_size)
 
-        pool = Pool(processes=nproc) if _pool is None else _pool
+        batch_i = np.zeros(nbatches, dtype=np.int32)
+        for i in range(nbatches - 1):
+            batch_i[i + 1] = batch_i[i] + len(batch_lat[i])
+        shm_edens, shedens = create_shared_block(self.edens)
 
-        res = list(
-            pool.imap(
-                echaim_star,
-                zip(
-                    blat,
-                    blon,
-                    itertools.repeat(heights),
-                    itertools.repeat(self.dt),
-                    itertools.repeat(True),
-                    itertools.repeat(True),
-                    itertools.repeat(True),
-                ),
+        pool = _pool or mp.get_context('fork').Pool(processes=nproc)
+        pool.starmap(
+            parallel_echaim,
+            zip(
+                batch_lat,
+                batch_lon,
+                itertools.repeat(heights),
+                itertools.repeat(self.dt),
+                itertools.repeat(shm_edens.name),
+                itertools.repeat(self.edens.shape),
+                batch_i,
+                itertools.repeat(True),
+                itertools.repeat(True),
+                itertools.repeat(True),
             )
         )
 
         if _pool is None:
             pool.close()
-
-        self.edens = np.vstack(res)
-        return
+        print(np.average(self.edens))
+        print(np.average(shedens))
+        self.edens[:] = shedens[:]
+        shm_edens.close()
+        shm_edens.unlink()
+        assert 1==0
 
     def ed(
             self,

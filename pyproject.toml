@@ -26,6 +26,7 @@ ffmpeg-progress-yield = "^0.7.8"
 skyfield = "^1.46"
 iricore = "^1.6.1"
 echaim = "^1.0.8"
+numba = "^0.58.1"
 
 [tool.poetry.extras]
 numba = ["numba"]
