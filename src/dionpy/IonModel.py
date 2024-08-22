@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import multiprocessing as mp
 import os
 import shutil
 import tempfile
@@ -15,6 +16,7 @@ from .IonFrame import IonFrame
 from .modules.helpers import altaz_mesh, pic2vid, open_save_file
 from .modules.parallel import interp_val
 from .modules.plotting import polar_plot
+
 
 
 class IonModel:
@@ -79,8 +81,10 @@ class IonModel:
         self.frames = []
 
         if autocalc:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning)
             nproc = np.min([cpu_count(), nmodels])
-            pool = Pool(processes=nproc)
+            pool = mp.get_context('fork').Pool(processes=nproc)
 
             for dt in tqdm(self._dts, desc="Calculating time frames"):
                 self.frames.append(
@@ -124,6 +128,7 @@ class IonModel:
             return self.frames[idx[0][0]]
         frame_dict = self.frames[0].get_init_dict()
         del frame_dict['dt']
+        del frame_dict['autocalc']
         obj = IonFrame(
             dt=dt,
             **frame_dict,
@@ -133,16 +138,16 @@ class IonModel:
             return obj
         else:
             idx = self._lr_ind(dt)
-            obj.layer.edens = interp_val(
-                self.frames[idx[0]].layer.edens,
-                self.frames[idx[1]].layer.edens,
+            obj.edens = interp_val(
+                self.frames[idx[0]].edens,
+                self.frames[idx[1]].edens,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
             )
-            obj.layer.etemp = interp_val(
-                self.frames[idx[0]].layer.etemp,
-                self.frames[idx[1]].layer.etemp,
+            obj.etemp = interp_val(
+                self.frames[idx[0]].etemp,
+                self.frames[idx[1]].etemp,
                 self._dts[idx[0]],
                 self._dts[idx[1]],
                 dt,
@@ -306,7 +311,7 @@ class IonModel:
             'etemp': dict(cmap="plasma", barlabel=r"$m^{-3}$"),
         }
         nproc = np.min([cpu_count(), len(dts)])
-        pool = Pool(nproc)
+        pool = mp.get_context('fork').Pool(processes=nproc)
 
         try:
             print("Calculating data")
@@ -320,10 +325,10 @@ class IonModel:
 
             if "edens" in target:
                 for i, frame in enumerate(tqdm(frames, desc="Interpolating ed")):
-                    data_dict['edens'][i, ...] = frame.layer.ed(alt, az)
+                    data_dict['edens'][i, ...] = frame.ed(alt, az)
             if "etemp" in target:
                 for i, frame in enumerate(tqdm(frames, desc="Interpolating et")):
-                    data_dict['etemp'][i, ...] = frame.layer.et(alt, az)
+                    data_dict['etemp'][i, ...] = frame.et(alt, az)
 
             plot_kwargs['pos'] = self.position
             plot_kwargs['freq'] = freq

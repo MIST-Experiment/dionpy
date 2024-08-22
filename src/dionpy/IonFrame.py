@@ -1,19 +1,37 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import itertools
+import warnings
+import multiprocessing as mp
 from datetime import datetime
 from multiprocessing import Pool, cpu_count
-from typing import Union, Sequence, Literal, Tuple
+from typing import Tuple
+from typing import Union, Sequence
 
 import h5py
+import healpy as hp
 import numpy as np
 
-from .IonLayer import IonLayer
+from .modules.helpers import eval_layer, R_EARTH
 from .modules.helpers import none_or_array, altaz_mesh, open_save_file
-from .modules.ion_tools import trop_refr
+from .modules.ion_tools import trop_refr, plasfreq
+from .modules.parallel import create_shared_block
 from .modules.parallel import shared_array
+from .modules.parallel_iri import parallel_iri, parallel_echaim
 from .modules.plotting import polar_plot
-from .raytracing import raytrace_star
+
+
+def _estimate_ahd(htop: float, hint: float = 0, r: float = R_EARTH * 1e-3):
+    """
+    Estimates the angular horizontal distance (ahd) between the top point of an atmospheric
+    layer and the Earth's surface.
+
+    :param htop: The height of the top point of the atmospheric layer in [km].
+    :param hint: The height above the Earth's surface in [km].
+    :param r: The radius of the Earth in [km].
+    """
+    return np.rad2deg(np.arccos(r / (r + hint)) + np.arccos(r / (r + htop)))
 
 
 class IonFrame:
@@ -42,41 +60,54 @@ class IonFrame:
             self,
             dt: datetime,
             position: Sequence[float, float, float],
-            nside: int = 64,
             hbot: float = 60,
-            htop: float = 500,
+            htop: float = 2000,
             nlayers: int = 500,
+            nside: int = 64,
             rdeg_offset: float = 5,
-            iriversion: Literal[16, 20] = 20,
-            echaim: bool = False,
+            name: str | None = None,
+            iriversion: int = 20,
             autocalc: bool = True,
-            _pool: Union[Pool, None] = None,
-            **kwargs,
+            echaim: bool = False,
+            _pool: Union[mp.Pool, None] = None,
     ):
+        self.rdeg = _estimate_ahd(htop, position[-1] * 1e-3) + rdeg_offset
+        self.rdeg_offset = rdeg_offset
+
+        if echaim:
+            if position[0] - self.rdeg < 55:
+                raise ValueError(
+                    f"The E-CHAIM model does not cover all coordinates needed for the ionosphere model at the "
+                    f"specified instrument's position. Your latitude is {position[0]}, and estimated field of"
+                    f"view angle plus offset is {self.rdeg} + {rdeg_offset}. You can try reducing the upper height"
+                    f"(htop parameter) of the model or reducing the offset (rdeg_offset parameter), but the latter"
+                    f"may cause problems with raytracing at low frequencies.)")
+
+        self.hbot = hbot
+        self.htop = htop
+        self.nlayers = nlayers
         if isinstance(dt, datetime):
             self.dt = dt
         else:
             raise ValueError("Parameter dt must be a datetime object.")
         self.position = position
-        self.nside = nside
-        self.rdeg_offset = rdeg_offset
-        self.iriversion = iriversion
+        self.name = name
         self.echaim = echaim
-        self.layer = IonLayer(
-            dt=dt,
-            position=position,
-            hbot=hbot,
-            htop=htop,
-            nlayers=nlayers,
-            rdeg_offset=rdeg_offset,
-            nside=nside,
-            name='Calculating Ne and Te',
-            iriversion=iriversion,
-            autocalc=autocalc,
-            echaim=echaim,
-            _pool=_pool,
-            **kwargs,
+
+        self.nside = nside
+        self.iriversion = iriversion
+        self._posvec = hp.ang2vec(self.position[1], self.position[0], lonlat=True)
+        self._obs_pixels = hp.query_disc(
+            self.nside, self._posvec, np.deg2rad(self.rdeg), inclusive=True
         )
+        self._obs_lons, self._obs_lats = hp.pix2ang(
+            self.nside, self._obs_pixels, lonlat=True
+        )
+        self.edens = np.zeros((len(self._obs_pixels), nlayers), dtype=np.float32)
+        self.etemp = np.zeros((len(self._obs_pixels), nlayers), dtype=np.float32)
+
+        if autocalc:
+            self.calc(_pool=_pool)
 
     def __call__(self,
                  alt: float | np.ndarray,
@@ -87,18 +118,21 @@ class IonFrame:
                  height_profile: bool = False,
                  _pool: Union[Pool, None] = None,
                  ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-
+        from .raytracing import raytrace_star
         b_alt = np.atleast_1d(alt).astype(np.float64)
         b_az = np.atleast_1d(az).astype(np.float64)
         nproc = np.min([len(b_alt), cpu_count()])
         b_alt = np.array_split(b_alt, nproc)
         b_az = np.array_split(b_az, nproc)
 
-        pool = Pool(processes=nproc) if _pool is None else _pool
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UserWarning)
+        # pool = Pool(processes=nproc) if _pool is None else _pool
+        pool = _pool or mp.get_context('fork').Pool(processes=nproc)
 
-        sh_edens = shared_array(self.layer.edens)
-        sh_etemp = shared_array(self.layer.etemp)
-        init_dict = self.layer.get_init_dict()
+        sh_edens = shared_array(self.edens)
+        sh_etemp = shared_array(self.etemp)
+        init_dict = self.get_init_dict()
 
         res = list(
             pool.imap(
@@ -133,10 +167,217 @@ class IonFrame:
             f"IRI version:\t20{self.iriversion}\n"
             f"Use E-CHAIM:\t{self.echaim}\n"
             f"Layer properties:\n"
-            f"\tBottom height:\t{self.layer.hbot} [km]\n"
-            f"\tTop height:\t{self.layer.htop} [km]\n"
-            f"\tN sublayers:\t{self.layer.nlayers}\n"
+            f"\tBottom height:\t{self.hbot} [km]\n"
+            f"\tTop height:\t{self.htop} [km]\n"
+            f"\tN sublayers:\t{self.nlayers}\n"
         )
+
+    def get_init_dict(self):
+        """
+        Returns a dictionary containing the initial parameters for the IonLayer object.
+
+        Note:
+            - The default value for autocalc is False.
+        """
+        return dict(
+            dt=self.dt,
+            position=self.position,
+            hbot=self.hbot,
+            htop=self.htop,
+            nlayers=self.nlayers,
+            nside=self.nside,
+            rdeg_offset=self.rdeg_offset,
+            iriversion=self.iriversion,
+            echaim=self.echaim,
+            autocalc=False,
+        )
+
+    def _batch_split(self, batch):
+        nbatches = len(self._obs_pixels) // batch + 1
+        nproc = np.min([mp.cpu_count(), nbatches])
+        blat = np.array_split(self._obs_lats, nbatches)
+        blon = np.array_split(self._obs_lons, nbatches)
+        return nbatches, nproc, blat, blon
+
+    def calc(self, _pool=None):
+        heights = (
+            self.hbot,
+            self.htop,
+            (self.htop - self.hbot) / (self.nlayers - 1) - 1e-6,
+        )
+
+        batch_size = 200
+        nbatches, nproc, batch_lat, batch_lon = self._batch_split(batch_size)
+        batch_i = np.zeros(nbatches, dtype=np.int32)
+        for i in range(nbatches - 1):
+            batch_i[i + 1] = batch_i[i] + len(batch_lat[i])
+        shm_edens, shedens = create_shared_block(self.edens)
+        shm_etemp, shetemp = create_shared_block(self.etemp)
+
+        pool = _pool or mp.get_context('fork').Pool(processes=nproc)
+        pool.starmap(
+            parallel_iri,
+            zip(
+                itertools.repeat(self.dt),
+                itertools.repeat(heights),
+                batch_lat,
+                batch_lon,
+                itertools.repeat(shm_edens.name),
+                itertools.repeat(shm_etemp.name),
+                itertools.repeat(self.edens.shape),
+                batch_i,
+                itertools.repeat(self.iriversion),
+            )
+        )
+
+        if _pool is None:
+            pool.close()
+
+        self.edens[:] = shedens[:]
+        self.etemp[:] = shetemp[:]
+
+        shm_edens.close()
+        shm_edens.unlink()
+        shm_etemp.close()
+        shm_etemp.unlink()
+
+        if self.echaim:
+            self._calc_echaim(_pool=_pool)
+
+    def _calc_echaim(self, _pool: Union[mp.Pool, None] = None):
+        """
+        Replace electron density with that calculated with ECHAIM.
+        """
+        heights = np.linspace(self.hbot, self.htop, self.nlayers, endpoint=True)
+        batch_size = 100
+        nbatches, nproc, batch_lat, batch_lon = self._batch_split(batch_size)
+
+        batch_i = np.zeros(nbatches, dtype=np.int32)
+        for i in range(nbatches - 1):
+            batch_i[i + 1] = batch_i[i] + len(batch_lat[i])
+        shm_edens, shedens = create_shared_block(self.edens)
+
+        pool = _pool or mp.get_context('fork').Pool(processes=nproc)
+        pool.starmap(
+            parallel_echaim,
+            zip(
+                batch_lat,
+                batch_lon,
+                itertools.repeat(heights),
+                itertools.repeat(self.dt),
+                itertools.repeat(shm_edens.name),
+                itertools.repeat(self.edens.shape),
+                batch_i,
+                itertools.repeat(True),
+                itertools.repeat(True),
+                itertools.repeat(True),
+            )
+        )
+
+        if _pool is None:
+            pool.close()
+        self.edens[:] = shedens[:]
+
+    def ed(
+            self,
+            alt: float | np.ndarray,
+            az: float | np.ndarray,
+            layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param alt: Elevation of an observation.
+        :param az: Azimuth of an observation.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the layer.
+        """
+        return eval_layer(
+            alt,
+            az,
+            self.nside,
+            self.position,
+            self.hbot,
+            self.htop,
+            self.nlayers,
+            self._obs_pixels,
+            self.edens,
+            layer=layer,
+        )
+
+    def plasfreq(
+            self,
+            alt: float | np.ndarray,
+            az: float | np.ndarray,
+            layer: int | None = None,
+            angular: bool = True,
+    ) -> float | np.ndarray:
+        """
+        Returns *angular* (by default) plasma frequency in [Hz]
+        """
+        return plasfreq(self.ed(alt, az, layer), angular=angular)
+
+    def edll(
+            self,
+            lat: float | np.ndarray,
+            lon: float | np.ndarray,
+            layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param lat: Latitude of a point.
+        :param lon: Longitude of a point.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the layer.
+        """
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        map_[self._obs_pixels] = self.edens[:, layer]
+        return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
+
+    def et(
+            self,
+            alt: float | np.ndarray,
+            az: float | np.ndarray,
+            layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param alt: Elevation of an observation.
+        :param az: Azimuth of an observation.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron temperature in the layer.
+        """
+        return eval_layer(
+            alt,
+            az,
+            self.nside,
+            self.position,
+            self.hbot,
+            self.htop,
+            self.nlayers,
+            self._obs_pixels,
+            self.etemp,
+            layer=layer,
+        )
+
+    def etll(
+            self,
+            lat: float | np.ndarray,
+            lon: float | np.ndarray,
+            layer: int | None = None,
+    ) -> float | np.ndarray:
+        """
+        :param lat: Latitude of a point.
+        :param lon: Longitude of a point.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :return: Electron density in the layer.
+        """
+        map_ = np.zeros(hp.nside2npix(self.nside)) + hp.UNSEEN
+        map_[self._obs_pixels] = self.etemp[:, layer]
+        return hp.pixelfunc.get_interp_val(map_, lon, lat, lonlat=True)
+
+    def get_heights(self):
+        return np.linspace(self.hbot, self.htop, self.nlayers)
 
     def raytrace(self,
                  alt: float | np.ndarray,
@@ -196,13 +437,12 @@ class IonFrame:
         meta.attrs["iriversion"] = self.iriversion
         meta.attrs["echaim"] = self.echaim
 
-        if self.layer is not None:
-            meta.attrs["rdeg_offset"] = self.layer.rdeg_offset
-            meta.attrs["nlayers"] = self.layer.nlayers
-            meta.attrs["htop"] = self.layer.htop
-            meta.attrs["hbot"] = self.layer.hbot
-            grp.create_dataset("edens", data=self.layer.edens)
-            grp.create_dataset("etemp", data=self.layer.etemp)
+        meta.attrs["rdeg_offset"] = self.rdeg_offset
+        meta.attrs["nlayers"] = self.nlayers
+        meta.attrs["htop"] = self.htop
+        meta.attrs["hbot"] = self.hbot
+        grp.create_dataset("edens", data=self.edens)
+        grp.create_dataset("etemp", data=self.etemp)
 
     def save(self, saveto: str = "./ionframe"):
         """
@@ -224,10 +464,8 @@ class IonFrame:
             dt=datetime.strptime(meta.attrs["dt"], "%Y-%m-%d %H:%M"),
             **meta_attrs
         )
-        obj.layer.edens = none_or_array(grp.get("edens"))
-        obj.layer.etemp = none_or_array(grp.get("etemp"))
-        if obj.layer.edens is None and obj.layer.etemp is None:
-            obj.layer = None
+        obj.edens = none_or_array(grp.get("edens"))
+        obj.etemp = none_or_array(grp.get("etemp"))
         return obj
 
     @classmethod
@@ -264,13 +502,37 @@ class IonFrame:
         """
         barlabel = r"$m^{-3}$"
         alt, az = altaz_mesh(gridsize)
-        edens = self.layer.ed(alt, az, layer)
+        edens = self.ed(alt, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - alt, edens),
             dt=self.dt,
             pos=self.position,
             barlabel=barlabel,
             cmap=cmap,
+            **kwargs,
+        )
+
+    def plot_plasfreq(self, layer: int, gridsize: int = 200, cmap='plasma', **kwargs):
+        """
+        Visualize electron density in the ionospheric layer.
+
+        :param gridsize: Grid resolution of the plot.
+        :param layer: A specific layer to plot. If None - an average of all layers is calculated.
+        :param cmap: A colormap to use in the plot.
+        :param kwargs: See `dionpy.plot_kwargs`.
+        :return: A matplotlib figure.
+        """
+        barlabel = r"$MHz$"
+        alt, az = altaz_mesh(gridsize)
+        data = self.plasfreq(alt, az, layer) * 1e-6
+        height = self.get_heights()[layer]
+        return polar_plot(
+            (np.deg2rad(az), 90 - alt, data),
+            dt=self.dt,
+            pos=self.position,
+            barlabel=barlabel,
+            cmap=cmap,
+            height=height,
             **kwargs,
         )
 
@@ -285,7 +547,7 @@ class IonFrame:
         """
         barlabel = r"K"
         alt, az = altaz_mesh(gridsize)
-        fet = self.layer.et(alt, az, layer)
+        fet = self.et(alt, az, layer)
         return polar_plot(
             (np.deg2rad(az), 90 - alt, fet),
             dt=self.dt,
@@ -405,14 +667,6 @@ class IonFrame:
             **kwargs,
         )
 
-    def calc(self, pbar: bool = False):
-        """
-        Calculates the layer's electron density and temperatur (use it if you set autocalc=False during the initialization).
-
-        :param pbar: If True - a progress bar will appear.
-        """
-        self.layer.calc(pbar)
-
     def troprefr(self, alt: float | np.ndarray) -> float | np.ndarray:
         """
         Approximation of the refraction in the troposphere recommended by the ITU-R:
@@ -422,22 +676,3 @@ class IonFrame:
         :return: Refraction in the troposphere in [deg].
         """
         return trop_refr(alt, self.position[2] * 1e-3)
-
-    def get_init_dict(self):
-        """
-        Returns a dictionary containing the initial parameters for the IonFrame object.
-
-        Note:
-            - The default value for autocalc is False.
-        """
-        return {
-            'dt': self.dt,
-            'position': self.position,
-            'nside': self.nside,
-            'hbot': self.layer.hbot,
-            'htop': self.layer.htop,
-            'nlayers': self.layer.nlayers,
-            'rdeg_offset': self.rdeg_offset,
-            'iriversion': self.iriversion,
-            'echaim': self.echaim,
-        }

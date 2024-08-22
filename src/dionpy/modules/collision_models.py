@@ -34,7 +34,7 @@ _CUR_DIR = os.path.dirname(os.path.realpath(__file__))
 _NUC_AGG, _HEI_AGG = np.genfromtxt(
     os.path.join(_CUR_DIR, "col_freq_agg.csv"), delimiter=",", unpack=True
 )
-_MODEL_AGG = interp1d(_HEI_AGG, _NUC_AGG)
+_MODEL_AGG = interp1d(_HEI_AGG, _NUC_AGG, bounds_error=False, fill_value=0.)
 
 
 def col_aggarwal(h: float | np.ndarray) -> float | np.ndarray:

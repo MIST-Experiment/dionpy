@@ -3,7 +3,6 @@ from typing import Tuple
 import numpy as np
 import pymap3d as pm
 
-from .IonLayer import IonLayer
 from .modules.collision_models import col_aggarwal, col_nicolet, col_setty
 from .modules.helpers import Ellipsoid, check_elaz_shape, R_EARTH
 from .modules.ion_tools import srange, refr_index, refr_angle, trop_refr, plasfreq
@@ -54,7 +53,7 @@ def _raytrace_sublayer(lat_ray, lon_ray, h_ray, h_next, alt_cur, az, freq, d_the
 
 
 def raytrace(
-        layer_init_dict: dict,
+        frame_init_dict: dict,
         edens: np.ndarray,
         etemp: np.ndarray,
         alt: float | np.ndarray,
@@ -66,11 +65,12 @@ def raytrace(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     # TODO: fix nans and infs
     # IonLayer initialization with edens and etemp arrays from shared memory
-    assert layer_init_dict['autocalc'] is False, "autocalc param should be False, check IonFrame."
+    assert frame_init_dict['autocalc'] is False, "autocalc param should be False, check IonFrame."
 
-    layer = IonLayer(**layer_init_dict)
-    layer.edens = edens
-    layer.etemp = etemp
+    from .IonFrame import IonFrame
+    frame = IonFrame(**frame_init_dict)
+    frame.edens = edens
+    frame.etemp = etemp
 
     # Initialization of variables
     # - General
@@ -78,21 +78,21 @@ def raytrace(
     check_elaz_shape(alt, az)
     alt_cur = np.array(alt)
     az = np.array(az)
-    heights = layer.get_heights() * 1e3  # in [m]
+    heights = frame.get_heights() * 1e3  # in [m]
 
     # - For refraction
     delta_theta = 0 * alt_cur
-    delta_theta_hist = np.empty((*alt_cur.shape, layer.nlayers))
+    delta_theta_hist = np.empty((*alt_cur.shape, frame.nlayers))
     inf_theta_mask = 0 * alt_cur
     nan_theta_mask = 0 * alt_cur
 
     # - For absorption and emission
-    dh = (layer.htop - layer.hbot) / layer.nlayers * 1e3  # in [m]
-    atten = np.empty((*alt_cur.shape, layer.nlayers))
-    emiss = np.empty((*alt_cur.shape, layer.nlayers))
+    dh = (frame.htop - frame.hbot) / frame.nlayers * 1e3  # in [m]
+    atten = np.empty((*alt_cur.shape, frame.nlayers))
+    emiss = np.empty((*alt_cur.shape, frame.nlayers))
 
     if troposphere:
-        alt_cur -= trop_refr(alt_cur, layer.position[-1])
+        alt_cur -= trop_refr(alt_cur, frame.position[-1])
 
     col_freq_choices = {
         "default": col_aggarwal,
@@ -111,20 +111,20 @@ def raytrace(
 
     # Init values for the first sub-layer
     ref_ind_cur = np.ones(alt_cur.shape)
-    lat_ray, lon_ray, h_ray = layer.position
+    lat_ray, lon_ray, h_ray = frame.position
     theta_ref = None
 
-    for i in range(layer.nlayers):
+    for i in range(frame.nlayers):
         # Calculating absorption and emission: part 1
         freq_c = col_model(heights[i] * 1e-3)
-        et = layer.et(alt_cur, az, layer=i)
+        et = frame.et(alt_cur, az, layer=i)
         freq_om = freq * 2 * np.pi
         ds = (srange(np.deg2rad(90 - alt_cur), heights[i] + 0.5 * dh) -
               srange(np.deg2rad(90 - alt_cur), heights[i] - 0.5 * dh))
 
         # Tracing change in position due to refraction
         lat_ray, lon_ray, h_ray, delta_theta, alt_cur, ref_ind_cur, theta_ref, ed, nt_mask, it_mask = _raytrace_sublayer(
-            lat_ray, lon_ray, h_ray, heights[i], alt_cur, az, freq, delta_theta, ref_ind_cur, i, layer, theta_ref)
+            lat_ray, lon_ray, h_ray, heights[i], alt_cur, az, freq, delta_theta, ref_ind_cur, i, frame, theta_ref)
         delta_theta_hist[..., i] = delta_theta
         inf_theta_mask += it_mask
         nan_theta_mask += nt_mask

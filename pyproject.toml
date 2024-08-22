@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "dionpy"
-version = "1.1.1"
+version = "1.2.0"
 description = "Dynamic ionosphere model for global 21 cm experiments"
 authors = ["Vadym Bidula <vadym.bidula@gmail.com>"]
 license = "MIT"
@@ -11,7 +11,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9, <3.14"
+python = ">=3.9, <4.0"
 
 numpy = "^1.22"
 healpy = "^1.16.1"
@@ -24,9 +24,8 @@ pytz = "^2023.3"
 it = "^1.0.0"
 ffmpeg-progress-yield = "^0.7.8"
 skyfield = "^1.46"
-iricore = "^1.6.1"
-echaim = "^1.0.8"
-numba = "^0.58.1"
+iricore = "^1.8.3"
+echaim = "^1.1.1"
 
 [tool.poetry.extras]
 numba = ["numba"]
@@ -43,9 +42,7 @@ jupyter = "^1.0.0"
 PyQt5 = "^5.15.6"
 PyYAML = "^6.0"
 qrcode = {extras = ["pil"], version = "^7.3.1"}
-pandas = "^1.5.3"
 unlzw = "^0.1.1"
-cartopy = "^0.21.1"
 shapely = "^2.0.1"
 setuptools = "^68.0.0"
 

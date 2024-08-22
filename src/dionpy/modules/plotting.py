@@ -16,6 +16,7 @@ plot_kwargs = {
     "pos": "List containing geographical latitude [deg], longitude[deg] and altitude[m] representing a position of "
            " an instrument. If None - will not be specified under plot.",
     "freq": "Float representing a frequency of an observation. If None - will not be specified under plot.",
+    "height": "Height of plotted layer in km",
     "title": "Title of the plot",
     "barlabel": "Label near colorbar. Most functions override this parameter.",
     "plotlabel": "Label on the plot. Usually includes date/time, location and frequency of an observation. If None - "
@@ -41,6 +42,7 @@ def polar_plot(
         dt: datetime | None = None,
         pos: Sequence[float, float, float] | None = None,
         freq: float | None = None,
+        height: float | None = None,
         title: str | None = None,
         barlabel: str | None = None,
         plotlabel: str | None = "",
@@ -128,6 +130,8 @@ def polar_plot(
                 )
         if freq is not None:
             plotlabel += f"\nFrequency: {freq:.1f} MHz"
+        if height is not None:
+            plotlabel += f"\nHeight: {height:.1f} km"
 
     if plotlabel is not None:
         if cinfo:

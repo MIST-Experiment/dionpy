@@ -28,15 +28,12 @@ el = np.linspace(0, 90, 100)  # Elevation axis
 az = np.linspace(0, 360, 100)  # Azimuth axis
 el_m, az_m = np.meshgrid(el, az)  # Rectangular coordinate grid
 
-# Access attenuation in numeric form
-atten = model.atten(el_m, az_m, freq)
+# Access refraction and attenuation in numeric form
+refr, atten, _ = model.raytrace(el_m, az_m, freq)
 
 print(f"Attenuation at {freq} MHz\n" +
       f"Min:\t{np.min(atten):.2f}\n" +
       f"Max:\t{np.max(atten):.2f}\n")
-
-# Access refraction in numeric form
-refr = model.refr(el_m, az_m, freq)
 
 print(f"Refraction at {freq} MHz\n" +
       f"Min:\t{np.min(refr):.2f}\n" +

@@ -24,3 +24,4 @@ Contents
    quickstart
    user_guide
    reference
+   release_notes
