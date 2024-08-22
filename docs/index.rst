@@ -23,5 +23,7 @@ Contents
    installation
    quickstart
    user_guide
+   examples
+   faq
    reference
    release_notes

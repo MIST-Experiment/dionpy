@@ -11,6 +11,8 @@ from typing import Union, Sequence
 
 import h5py
 import healpy as hp
+import iricore.iri
+from iricore.iri import indices_uptodate
 import numpy as np
 
 from .modules.helpers import eval_layer, R_EARTH
@@ -61,9 +63,9 @@ class IonFrame:
             dt: datetime,
             position: Sequence[float, float, float],
             hbot: float = 60,
-            htop: float = 2000,
-            nlayers: int = 500,
-            nside: int = 64,
+            htop: float = 1000,
+            nlayers: int = 100,
+            nside: int = 32,
             rdeg_offset: float = 5,
             name: str | None = None,
             iriversion: int = 20,
@@ -90,6 +92,9 @@ class IonFrame:
             self.dt = dt
         else:
             raise ValueError("Parameter dt must be a datetime object.")
+
+        indices_uptodate(dt)
+
         self.position = position
         self.name = name
         self.echaim = echaim
@@ -312,7 +317,12 @@ class IonFrame:
             angular: bool = True,
     ) -> float | np.ndarray:
         """
-        Returns *angular* (by default) plasma frequency in [Hz]
+        :param alt: Elevation of an observation.
+        :param az: Azimuth of an observation.
+        :param layer: Number of sublayer from the precalculated sublayers.
+                      If None - an average over all layers is returned.
+        :param angular: If True - angular plasma frequency is calculated.
+        :return: Plasma frequency in [Hz].
         """
         return plasfreq(self.ed(alt, az, layer), angular=angular)
 
@@ -514,7 +524,7 @@ class IonFrame:
 
     def plot_plasfreq(self, layer: int, gridsize: int = 200, cmap='plasma', **kwargs):
         """
-        Visualize electron density in the ionospheric layer.
+        Visualize plasma frequency in the ionospheric layer.
 
         :param gridsize: Grid resolution of the plot.
         :param layer: A specific layer to plot. If None - an average of all layers is calculated.

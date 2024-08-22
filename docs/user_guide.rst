@@ -10,6 +10,7 @@ of the :class:`~dionpy.IonFrame`
 uses precalculated electron density to calculate the wave propagation trajectories through the ionosphere. In the
 process, it also calculates the integrated absorption and emission of the ionosphere.
 
+.. _guide-ionframe:
 
 Initializing IonFrame
 ---------------------
