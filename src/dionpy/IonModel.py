@@ -81,8 +81,6 @@ class IonModel:
         self.frames = []
 
         if autocalc:
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=UserWarning)
             nproc = np.min([cpu_count(), nmodels])
             pool = mp.get_context('fork').Pool(processes=nproc)
 

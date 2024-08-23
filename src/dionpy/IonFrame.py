@@ -78,12 +78,9 @@ class IonFrame:
 
         if echaim:
             if position[0] - self.rdeg < 55:
-                raise ValueError(
-                    f"The E-CHAIM model does not cover all coordinates needed for the ionosphere model at the "
-                    f"specified instrument's position. Your latitude is {position[0]}, and estimated field of"
-                    f"view angle plus offset is {self.rdeg} + {rdeg_offset}. You can try reducing the upper height"
-                    f"(htop parameter) of the model or reducing the offset (rdeg_offset parameter), but the latter"
-                    f"may cause problems with raytracing at low frequencies.)")
+                warnings.warn("ECHAIM does not cover the whole field of view for you position. "
+                              "All electron density below 55 deg latitude will be NaN. This is important "
+                              "because these NaNs can be confused with wave absorption when raytracing.", stacklevel=2)
 
         self.hbot = hbot
         self.htop = htop
@@ -130,8 +127,6 @@ class IonFrame:
         b_alt = np.array_split(b_alt, nproc)
         b_az = np.array_split(b_az, nproc)
 
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=UserWarning)
         # pool = Pool(processes=nproc) if _pool is None else _pool
         pool = _pool or mp.get_context('fork').Pool(processes=nproc)
 
